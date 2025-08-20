@@ -1,0 +1,75 @@
+<div class="results-section">
+  <h2>Wyniki analizy</h2>
+
+  <div class="ensemble-result">
+    <h3>Wynik całościowy</h3>
+    <div
+      class="risk-indicator"
+      [class]="getRiskClass(ensembleResult().ensemble_prediction.risk_level)"
+    >
+      <strong>{{
+        ensembleResult().ensemble_prediction.is_phishing
+          ? "PHISHING WYKRYTY"
+          : "BRAK PHISHINGU"
+      }}</strong>
+    </div>
+    <p>
+      Poziom ryzyka:
+      <strong>{{ ensembleResult().ensemble_prediction.risk_level }}</strong>
+    </p>
+    <p>
+      Pewność uzyskanego wyniku:
+      {{ (ensembleResult().ensemble_prediction.confidence * 100).toFixed(2) }}%
+    </p>
+    <p>
+      Zgoda algorytmów:
+      {{ ensembleResult().ensemble_prediction.algorithms_agreeing }}/{{
+        ensembleResult().ensemble_prediction.total_algorithms
+      }}
+    </p>
+  </div>
+
+  <div class="individual-results">
+    <h3>Wyniki poszczególnych modeli</h3>
+    <div class="models-grid">
+      @for (item of getIndividualResults(); track item.name) {
+      <div class="model-card">
+        <h4>{{ item.name }}</h4>
+        <div
+          class="prediction-result"
+          [class]="item.result.is_phishing ? 'phishing' : 'safe'"
+        >
+          {{ item.result.is_phishing ? "Phishing" : "Bezpieczne" }}
+        </div>
+        <p>Pewność: {{ (item.result.confidence * 100).toFixed(2) }}%</p>
+        <p>Model: {{ item.result.model_type }}</p>
+      </div>
+      }
+    </div>
+  </div>
+
+  <div class="plots-section">
+    <h3>Wykresy analizy</h3>
+    <div class="plots-grid">
+      @if (ensembleResult().plots && ensembleResult().plots.comparison) {
+      <div class="plot-card">
+        <h4>Porównanie modeli</h4>
+        <img
+          [src]="getFullPlotUrl(ensembleResult().plots.comparison)"
+          alt="Porównanie modeli"
+          class="plot-image"
+        />
+      </div>
+      } @for (plotItem of getModelPlots(); track plotItem.key) {
+      <div class="plot-card">
+        <h4>{{ plotItem.name }}</h4>
+        <img
+          [src]="getFullPlotUrl(plotItem.url)"
+          alt="{{ plotItem.name }}"
+          class="plot-image"
+        />
+      </div>
+      }
+    </div>
+  </div>
+</div>

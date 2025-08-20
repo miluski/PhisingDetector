@@ -1,0 +1,270 @@
+<div class="container">
+  <h1>Detektor Phishingu</h1>
+
+  <div class="form-section">
+    <h2>Sprawdź wiadomość</h2>
+    <div class="form-group">
+      <label>Typ wiadomości:</label>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input
+            type="radio"
+            name="messageType"
+            value="email"
+            [checked]="messageType() === 'email'"
+            (change)="onMessageTypeChange('email')"
+          />
+          Email
+        </label>
+        <label class="radio-label">
+          <input
+            type="radio"
+            name="messageType"
+            value="sms"
+            [checked]="messageType() === 'sms'"
+            (change)="onMessageTypeChange('sms')"
+          />
+          SMS
+        </label>
+      </div>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" #form="ngForm">
+      @if (messageType() === 'email') {
+      <div class="form-group">
+        <label for="sender">Nadawca - adres email</label>
+        <input
+          type="email"
+          id="sender"
+          name="sender"
+          [(ngModel)]="predictionRequest.sender"
+          required
+          placeholder="np. example@example.com"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="receiver">Odbiorca - adres email</label>
+        <input
+          type="email"
+          id="receiver"
+          name="receiver"
+          [(ngModel)]="predictionRequest.receiver"
+          placeholder="np. victim@example.com"
+          class="form-control"
+        />
+      </div>
+      }
+
+      <div class="form-group">
+        <label for="content">
+          {{
+            messageType() === "email"
+              ? "Treść wiadomości email:"
+              : "Treść wiadomości SMS:"
+          }}
+        </label>
+        <textarea
+          id="content"
+          name="content"
+          [(ngModel)]="predictionRequest.content"
+          required
+          rows="5"
+          [placeholder]="
+            messageType() === 'email'
+              ? 'Wprowadź tutaj treść emaila do analizy...'
+              : 'Wprowadź tutaj treść SMS-a do analizy...'
+          "
+          class="form-control"
+        ></textarea>
+      </div>
+
+      <div class="button-group">
+        <button
+          type="submit"
+          [disabled]="!form.valid || isLoading()"
+          class="btn btn-primary"
+        >
+          {{ isLoading() ? "Analizowanie..." : "Sprawdź wszystkie modele" }}
+        </button>
+
+        <button
+          type="button"
+          (click)="testIndividualModel('logistic-regression')"
+          [disabled]="!form.valid || isLoading()"
+          class="btn btn-secondary"
+        >
+          Test Regresji Logistycznej
+        </button>
+
+        <button
+          type="button"
+          (click)="testIndividualModel('random-forest')"
+          [disabled]="!form.valid || isLoading()"
+          class="btn btn-secondary"
+        >
+          Test Random Forest
+        </button>
+
+        <button
+          type="button"
+          (click)="testIndividualModel('xgboost')"
+          [disabled]="!form.valid || isLoading()"
+          class="btn btn-secondary"
+        >
+          Test XGBoost
+        </button>
+
+        <button
+          type="button"
+          (click)="testIndividualModel('svm')"
+          [disabled]="!form.valid || isLoading()"
+          class="btn btn-secondary"
+        >
+          Test maszyny wektorów nośnych
+        </button>
+
+        <button
+          type="button"
+          (click)="testIndividualModel('mlp')"
+          [disabled]="!form.valid || isLoading()"
+          class="btn btn-secondary"
+        >
+          Test perceptronu wielowarstwowego
+        </button>
+      </div>
+    </form>
+  </div>
+
+  @if (error()) {
+  <div class="error-section">
+    <h3>Błąd</h3>
+    <p>{{ error() }}</p>
+  </div>
+  } @if (ensembleResult()) {
+  <div class="results-section">
+    <h2>Wyniki analizy</h2>
+
+    <div class="ensemble-result">
+      <h3>Wynik całościowy</h3>
+      <div
+        class="risk-indicator"
+        [class]="getRiskClass(ensembleResult()!.ensemble_prediction.risk_level)"
+      >
+        <strong>{{
+          ensembleResult()!.ensemble_prediction.is_phishing
+            ? "PHISHING WYKRYTY"
+            : "BRAK phishingu"
+        }}</strong>
+      </div>
+      <p>
+        Poziom ryzyka:
+        <strong>{{ ensembleResult()!.ensemble_prediction.risk_level }}</strong>
+      </p>
+      <p>
+        Pewność uzyskanego wyniku:
+        {{
+          (ensembleResult()!.ensemble_prediction.confidence * 100).toFixed(2)
+        }}%
+      </p>
+      <p>
+        Zgoda algorytmów:
+        {{ ensembleResult()!.ensemble_prediction.algorithms_agreeing }}/{{
+          ensembleResult()!.ensemble_prediction.total_algorithms
+        }}
+      </p>
+    </div>
+
+    <div class="individual-results">
+      <h3>Wyniki poszczególnych modeli</h3>
+      <div class="models-grid">
+        @for (item of getIndividualResults(); track item.name) {
+        <div class="model-card">
+          <h4>{{ item.name }}</h4>
+          <div
+            class="prediction-result"
+            [class]="item.result.is_phishing ? 'phishing' : 'safe'"
+          >
+            {{ item.result.is_phishing ? "Phishing" : "Bezpieczne" }}
+          </div>
+          <p>Pewność: {{ (item.result.confidence * 100).toFixed(2) }}%</p>
+          <p>Model: {{ item.result.model_type }}</p>
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="plots-section">
+      <h3>Wykresy analizy</h3>
+      <div class="plots-grid">
+        @if (ensembleResult()?.plots?.comparison) {
+        <div class="plot-card">
+          <h4>Porównanie modeli</h4>
+          <img
+            [src]="getFullPlotUrl(ensembleResult()!.plots.comparison)"
+            alt="Porównanie modeli"
+            class="plot-image"
+          />
+        </div>
+        } @for (plotItem of getModelPlots(); track plotItem.key) {
+        <div class="plot-card">
+          <h4>{{ plotItem.name }}</h4>
+          <img
+            [src]="getFullPlotUrl(plotItem.url)"
+            alt="{{ plotItem.name }}"
+            class="plot-image"
+          />
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+  } @if (individualResult()) {
+  <div class="results-section">
+    <h2>Wynik pojedynczego modelu</h2>
+    <div class="individual-result">
+      <h3>{{ individualResult()!.algorithm }}</h3>
+      <div
+        class="risk-indicator"
+        [class]="individualResult()!.prediction.is_phishing ? 'high' : 'low'"
+      >
+        <strong>{{
+          individualResult()!.prediction.is_phishing
+            ? "PHISHING WYKRYTY"
+            : "BRAK PHISINGU"
+        }}</strong>
+      </div>
+      <p>
+        Pewność uzyskanego wyniku:
+        {{ (individualResult()!.prediction.confidence * 100).toFixed(2) }}%
+      </p>
+      <p>Model: {{ individualResult()!.prediction.model_type }}</p>
+
+      @if (individualResult()?.plots?.analysis) {
+      <div class="plot-section">
+        <h4>Analiza modelu</h4>
+        <img
+          [src]="getFullPlotUrl(individualResult()!.plots!.analysis)"
+          alt="Analiza modelu"
+          class="plot-image"
+        />
+      </div>
+      }
+    </div>
+  </div>
+  }
+  <div class="statistics-section">
+    <h2>Statystyki i Analiza Modeli</h2>
+    <app-statistics-panel
+      [modelStatistics]="modelStatistics()"
+      [featureStatistics]="featureStatistics()"
+      [scalingStatistics]="scalingStatistics()"
+      [selectedModel]="selectedModel()"
+      (onLoadModelStats)="loadModelStatistics()"
+      (onLoadFeatureStats)="loadFeatureStatistics()"
+      (onLoadScalingStats)="loadScalingStatistics()"
+      (onModelSelectionChanged)="onModelSelectionChanged($event)"
+    ></app-statistics-panel>
+  </div>
+</div>

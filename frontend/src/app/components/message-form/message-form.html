@@ -1,0 +1,147 @@
+<div class="form-section">
+  <h2>Sprawdź wiadomość</h2>
+  <div class="form-group">
+    <label>Typ wiadomości:</label>
+    <div class="radio-group">
+      <label class="radio-label">
+        <input
+          type="radio"
+          name="messageType"
+          value="email"
+          [checked]="messageType() === 'email'"
+          (change)="onMessageTypeChange('email')"
+        />
+        Email
+      </label>
+      <label class="radio-label">
+        <input
+          type="radio"
+          name="messageType"
+          value="sms"
+          [checked]="messageType() === 'sms'"
+          (change)="onMessageTypeChange('sms')"
+        />
+        SMS
+      </label>
+    </div>
+  </div>
+
+  <form (ngSubmit)="onSubmit()" #form="ngForm">
+    @if (messageType() === 'email') {
+    <div class="form-group">
+      <label for="sender">Nadawca - adres email</label>
+      <input
+        type="email"
+        id="sender"
+        name="sender"
+        [value]="formData().sender"
+        (input)="onSenderChange($event)"
+        required
+        placeholder="np. example@example.com"
+        class="form-control"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="receiver">Odbiorca - adres email</label>
+      <input
+        type="email"
+        id="receiver"
+        name="receiver"
+        [value]="formData().receiver"
+        (input)="onReceiverChange($event)"
+        placeholder="np. victim@example.com"
+        class="form-control"
+      />
+    </div>
+    }
+
+    <div class="form-group">
+      <label for="content">
+        {{
+          messageType() === "email"
+            ? "Treść wiadomości email:"
+            : "Treść wiadomości SMS:"
+        }}
+      </label>
+      <textarea
+        id="content"
+        name="content"
+        [value]="formData().content"
+        (input)="onContentInputChange($event)"
+        required
+        rows="5"
+        [placeholder]="
+          messageType() === 'email'
+            ? 'Wprowadź tutaj treść emaila do analizy...'
+            : 'Wprowadź tutaj treść SMS-a do analizy...'
+        "
+        class="form-control"
+      ></textarea>
+    </div>
+
+    <div class="button-group">
+      <button
+        type="submit"
+        [disabled]="!form.valid || isLoading()"
+        class="btn btn-primary"
+      >
+        {{ isLoading() ? "Analizowanie..." : "Sprawdź wszystkie modele" }}
+      </button>
+
+      <button
+        type="button"
+        (click)="testModel('logistic-regression')"
+        [disabled]="!form.valid || isLoading()"
+        class="btn btn-secondary"
+      >
+        Test Regresji Logistycznej
+      </button>
+
+      <button
+        type="button"
+        (click)="testModel('random-forest')"
+        [disabled]="!form.valid || isLoading()"
+        class="btn btn-secondary"
+      >
+        Test Lasu Losowego
+      </button>
+
+      <button
+        type="button"
+        (click)="testModel('xgboost')"
+        [disabled]="!form.valid || isLoading()"
+        class="btn btn-secondary"
+      >
+        Test XGBoost
+      </button>
+
+      <button
+        type="button"
+        (click)="testModel('svm')"
+        [disabled]="!form.valid || isLoading()"
+        class="btn btn-secondary"
+      >
+        Test maszyny wektorów nośnych
+      </button>
+
+      <button
+        type="button"
+        (click)="testModel('mlp')"
+        [disabled]="!form.valid || isLoading()"
+        class="btn btn-secondary"
+      >
+        Test perceptronu wielowarstwowego
+      </button>
+
+      <button
+        type="button"
+        (click)="testEnhanced()"
+        [disabled]="!form.valid || isLoading()"
+        class="btn btn-enhanced"
+      >
+        Test Predykcji Hybrydowej
+      </button>
+    </div>
+  </form>
+</div>
