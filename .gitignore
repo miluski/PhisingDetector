@@ -32,3 +32,4 @@ __pycache__
 .angular
 .vscode
 *.pkl
+venv
