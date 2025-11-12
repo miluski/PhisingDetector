@@ -1,0 +1,11 @@
+Faza,Model,Zbiór,Rozkład,Wynik rankingowy,ROC-AUC,F1,Dokładność,Błędne
+Faza 1: Mini Test,Regresja Logistyczna,Pełny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,Random Forest,Pełny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,Random Forest,Zoptymalizowany (73),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,XGBoost,Pełny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,XGBoost,Zoptymalizowany (73),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,SVM,Pełny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,SVM,Zoptymalizowany (73),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,MLP,Pełny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,MLP,Zoptymalizowany (73),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0
+Faza 1: Mini Test,Regresja Logistyczna,Zoptymalizowany (73),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,0

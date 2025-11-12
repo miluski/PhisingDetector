@@ -14,13 +14,13 @@ def sample_real_examples(df):
     print(f"Dostępne phishingowe rekordy: {len(phishing_records):,}")
     print(f"Dostępne bezpieczne rekordy: {len(legitimate_records):,}")
 
-    sample_phishing = phishing_records.sample(n=50, random_state=42)
-    sample_legitimate = legitimate_records.sample(n=50, random_state=42)
+    sample_phishing = phishing_records.sample(n=10000, random_state=42)
+    sample_legitimate = legitimate_records.sample(n=10000, random_state=42)
 
     real_examples = pd.concat([sample_phishing, sample_legitimate], ignore_index=True)
     real_examples = real_examples.sample(frac=1, random_state=42).reset_index(drop=True)
 
-    print(f"\n✓ Wybrano 100 prawdziwych przykładów (50 phishing + 50 legalne)")
+    print(f"\n✓ Wybrano 20,000 prawdziwych przykładów (10,000 phishing + 10,000 bezpiecznych)")
     return real_examples
 
 def calculate_synthetic_value(col, val1, val2):
@@ -44,17 +44,35 @@ def create_synthetic_record(record1, record2, columns):
 
 def generate_synthetic_records(df):
     synthetic_records = []
-    all_records = df.sample(frac=1, random_state=42).reset_index(drop=True)
+    phishing_records = df[df['phishing'] == 1]
+    legitimate_records = df[df['phishing'] == 0]
 
-    for i in range(100):
+    phishing_records = phishing_records.sample(frac=1, random_state=42).reset_index(drop=True)
+    legitimate_records = legitimate_records.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    for i in range(10000):
         idx1 = i * 2
         idx2 = i * 2 + 1
 
-        if idx2 >= len(all_records):
-            break
+        if idx2 >= len(phishing_records):
+            idx1 = idx1 % len(phishing_records)
+            idx2 = idx2 % len(phishing_records)
 
-        record1 = all_records.iloc[idx1]
-        record2 = all_records.iloc[idx2]
+        record1 = phishing_records.iloc[idx1]
+        record2 = phishing_records.iloc[idx2]
+        synthetic_record = create_synthetic_record(record1, record2, df.columns)
+        synthetic_records.append(synthetic_record)
+
+    for i in range(10000):
+        idx1 = i * 2
+        idx2 = i * 2 + 1
+
+        if idx2 >= len(legitimate_records):
+            idx1 = idx1 % len(legitimate_records)
+            idx2 = idx2 % len(legitimate_records)
+
+        record1 = legitimate_records.iloc[idx1]
+        record2 = legitimate_records.iloc[idx2]
         synthetic_record = create_synthetic_record(record1, record2, df.columns)
         synthetic_records.append(synthetic_record)
 
@@ -68,13 +86,13 @@ def ensure_integer_columns(df):
 
 def print_generation_summary(final_df, synthetic_df, output_csv):
     print(f"\n✅ Zapisano zbiór testowy do: {output_csv}")
-    print(f"   Całkowita liczba rekordów: {len(final_df)}")
-    print(f"   - Prawdziwe przykłady: 100 (50 phishing, 50 bezpiecznych)")
-    print(f"   - Syntetyczne rekordy: {len(synthetic_df)}")
+    print(f"   Całkowita liczba rekordów: {len(final_df):,}")
+    print(f"   - Prawdziwe przykłady: 20,000 (10,000 phishing, 10,000 bezpiecznych)")
+    print(f"   - Syntetyczne rekordy: {len(synthetic_df):,}")
 
     phishing_count = final_df['phishing'].sum()
     legitimate_count = len(final_df) - phishing_count
-    print(f"   Rozkład etykiet: {phishing_count} phishing, {legitimate_count} bezpiecznych")
+    print(f"   Rozkład etykiet: {phishing_count:,} phishing, {legitimate_count:,} bezpiecznych")
 
 def generate_test_dataset(input_csv, output_csv, dataset_name):
     print_generation_header(dataset_name)
@@ -83,9 +101,10 @@ def generate_test_dataset(input_csv, output_csv, dataset_name):
     real_examples = sample_real_examples(df)
     synthetic_df = generate_synthetic_records(df)
 
-    print(f"✓ Wygenerowano {len(synthetic_df)} syntetycznych rekordów (średnie z par)")
+    print(f"✓ Wygenerowano {len(synthetic_df):,} syntetycznych rekordów (średnie z par)")
 
     final_df = pd.concat([real_examples, synthetic_df], ignore_index=True)
+    final_df = final_df.sample(frac=1, random_state=42).reset_index(drop=True)
     final_df = ensure_integer_columns(final_df)
     final_df.to_csv(output_csv, index=False)
 

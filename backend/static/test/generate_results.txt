@@ -1,0 +1,85 @@
+====================================================================================================
+GENEROWANIE ZBIORU TESTOWEGO - PEŁNY ZBIÓR DANYCH (111 CECH)
+====================================================================================================
+
+Dostępne phishingowe rekordy: 30,647
+Dostępne bezpieczne rekordy: 58,000
+
+✓ Wybrano 20,000 prawdziwych przykładów (10,000 phishing + 10,000 bezpiecznych)
+✓ Wygenerowano 20,000 syntetycznych rekordów (średnie z par)
+
+✅ Zapisano zbiór testowy do: ../data/test/test_dataset_full.csv
+   Całkowita liczba rekordów: 40,000
+   - Prawdziwe przykłady: 20,000 (10,000 phishing, 10,000 bezpiecznych)
+   - Syntetyczne rekordy: 20,000
+   Rozkład etykiet: 20,000 phishing, 20,000 bezpiecznych
+
+====================================================================================================
+GENEROWANIE ZBIORU TESTOWEGO - ZOPTYMALIZOWANY ZBIÓR DANYCH (73 CECHY)
+====================================================================================================
+
+Dostępne phishingowe rekordy: 30,497
+Dostępne bezpieczne rekordy: 56,712
+
+✓ Wybrano 20,000 prawdziwych przykładów (10,000 phishing + 10,000 bezpiecznych)
+✓ Wygenerowano 20,000 syntetycznych rekordów (średnie z par)
+
+✅ Zapisano zbiór testowy do: ../data/test/test_dataset_optimized.csv
+   Całkowita liczba rekordów: 40,000
+   - Prawdziwe przykłady: 20,000 (10,000 phishing, 10,000 bezpiecznych)
+   - Syntetyczne rekordy: 20,000
+   Rozkład etykiet: 20,000 phishing, 20,000 bezpiecznych
+
+====================================================================================================
+PORÓWNANIE STATYSTYK - PEŁNY ZBIÓR DANYCH (111 CECH)
+====================================================================================================
+
+Statystyka                                        Oryginalny zbiór             Zbiór testowy
+────────────────────────────────────────────────────────────────────────────────────────────────────
+Liczba rekordów                                             88,647                    40,000
+Rekordy phishingowe                                         30,647                    20,000
+Rekordy bezpieczne                                          58,000                    20,000
+% Phishing                                                  34.57%                    50.00%
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+PORÓWNANIE ZAKRESÓW WYBRANYCH CECH
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Cecha                             Oryg: Min    Oryg: Max    Test: Min    Test: Max   Zgodność
+────────────────────────────────────────────────────────────────────────────────────────────────────
+qty_dot_url                            1.00        24.00         1.00        23.00          ✓
+qty_hyphen_url                         0.00        35.00         0.00        35.00          ✓
+qty_slash_url                          0.00        44.00         0.00        29.00          ✓
+asn_ip                                 3.00    395754.00         3.00    395532.00          ✓
+time_response                          0.01        38.40         0.01        17.71          ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+====================================================================================================
+PORÓWNANIE STATYSTYK - ZOPTYMALIZOWANY ZBIÓR DANYCH (73 CECHY)
+====================================================================================================
+
+Statystyka                                        Oryginalny zbiór             Zbiór testowy
+────────────────────────────────────────────────────────────────────────────────────────────────────
+Liczba rekordów                                             87,209                    40,000
+Rekordy phishingowe                                         30,497                    20,000
+Rekordy bezpieczne                                          56,712                    20,000
+% Phishing                                                  34.97%                    50.00%
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+PORÓWNANIE ZAKRESÓW WYBRANYCH CECH
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Cecha                             Oryg: Min    Oryg: Max    Test: Min    Test: Max   Zgodność
+────────────────────────────────────────────────────────────────────────────────────────────────────
+qty_dot_url                            1.00        24.00         1.00        20.00          ✓
+qty_hyphen_url                         0.00        35.00         0.00        31.00          ✓
+qty_slash_url                          0.00        44.00         0.00        29.00          ✓
+asn_ip                                 3.00    395754.00        18.00    395532.00          ✓
+time_response                          0.01        38.40         0.01        18.55          ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+====================================================================================================
+✅ GENEROWANIE ZAKOŃCZONE POMYŚLNIE!
+====================================================================================================
