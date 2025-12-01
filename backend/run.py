@@ -5,11 +5,13 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app import app
+from app import app as flask_app
+import app.routes
+from config.server_runner import ServerRunner
+
 
 if __name__ == '__main__':
-    print("")
-    print("API will be available at: http://localhost:5001")
-    print("")
-    
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    runner = ServerRunner(flask_app)
+    runner.run()
+
+

@@ -132,12 +132,10 @@ FEATURE_CATEGORIES = {
 
 
 def get_readable_name(feature_name):
-    """Get human-readable name for a feature."""
     return FEATURE_NAMES.get(feature_name, feature_name)
 
 
 def get_feature_category(feature_name):
-    """Get category for a feature."""
     for category, features in FEATURE_CATEGORIES.items():
         if feature_name in features:
             return category
@@ -145,7 +143,6 @@ def get_feature_category(feature_name):
 
 
 def rename_features(df, inplace=False):
-    """Rename all features in a DataFrame to human-readable names."""
     rename_dict = {col: get_readable_name(col) for col in df.columns if col in FEATURE_NAMES}
     if inplace:
         df.rename(columns=rename_dict, inplace=True)

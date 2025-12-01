@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+.git/
+.gitignore
+notebooks/
+static/plots/*
+static/statistical_analysis/html/*
+static/statistical_analysis/png/*

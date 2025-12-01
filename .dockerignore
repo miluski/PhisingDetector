@@ -1,0 +1,15 @@
+.git/
+.gitignore
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+node_modules/
+.vscode/
+notebooks/
+*.ipynb
+.env
+.venv/
+venv/
+backend/data/*.csv
+frontend/dist/

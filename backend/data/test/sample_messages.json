@@ -1,0 +1,266 @@
+{
+  "phishing_emails": [
+    {
+      "name": "Fake Bank Alert",
+      "sender": "security@bankofamerica-verify.com",
+      "recipient": "user@example.com",
+      "subject": "Urgent: Your Account Has Been Compromised",
+      "body": "Dear Customer,\n\nWe have detected suspicious activity on your account. Please verify your identity immediately by clicking the link below:\n\nhttps://bankofamerica-verify.com/secure/login?id=12345&token=abc\n\nIf you do not verify within 24 hours, your account will be suspended.\n\nBank of America Security Team",
+      "expected_result": "phishing",
+      "indicators": [
+        "urgent language",
+        "suspicious domain",
+        "threat of account suspension",
+        "generic greeting"
+      ]
+    },
+    {
+      "name": "PayPal Scam",
+      "sender": "service@paypal-security-center.net",
+      "recipient": "victim@gmail.com",
+      "subject": "Action Required: Unusual Sign-in Activity",
+      "body": "Hello,\n\nWe noticed unusual activity on your PayPal account from an unrecognized device.\n\nLocation: Unknown\nDevice: Windows PC\n\nIf this wasn't you, secure your account now:\nhttps://paypal-security-center.net/verify/account?user=victim&ref=sec123\n\nPayPal Support",
+      "expected_result": "phishing",
+      "indicators": ["fake paypal domain", "urgency", "location scare tactic"]
+    },
+    {
+      "name": "Netflix Subscription Scam",
+      "sender": "billing@netflix-account-update.com",
+      "recipient": "user@outlook.com",
+      "subject": "Your Netflix Membership Has Been Suspended",
+      "body": "Hi,\n\nWe were unable to validate your payment information for the next billing cycle.\n\nUpdate your payment details here:\nhttps://netflix-account-update.com/billing/update?session=xyz789\n\nYour membership will be canceled if payment is not updated within 48 hours.\n\nNetflix Team",
+      "expected_result": "phishing",
+      "indicators": ["fake netflix domain", "payment urgency", "suspension threat"]
+    },
+    {
+      "name": "Amazon Prize Scam",
+      "sender": "prizes@amazon-rewards-winner.org",
+      "recipient": "lucky@yahoo.com",
+      "subject": "Congratulations! You've Won an Amazon Gift Card!",
+      "body": "Dear Amazon Customer,\n\nYou have been selected to receive a $1000 Amazon Gift Card!\n\nClaim your prize now:\nhttps://amazon-rewards-winner.org/claim?winner=lucky&prize=1000\n\nThis offer expires in 24 hours. Don't miss out!\n\nAmazon Rewards Team",
+      "expected_result": "phishing",
+      "indicators": ["too good to be true", "fake amazon domain", "urgency", "prize scam"]
+    },
+    {
+      "name": "Microsoft Account Phishing",
+      "sender": "no-reply@microsoft-verify-account.com",
+      "recipient": "employee@company.com",
+      "subject": "Your Microsoft Account Password Expires Today",
+      "body": "Dear User,\n\nYour Microsoft 365 password will expire today. To continue using your account without interruption, please update your password immediately:\n\nhttps://microsoft-verify-account.com/password/reset?email=employee@company.com\n\nMicrosoft Support",
+      "expected_result": "phishing",
+      "indicators": ["fake microsoft domain", "password expiry scam", "corporate targeting"]
+    },
+    {
+      "name": "IRS Tax Scam",
+      "sender": "refunds@irs-tax-refund.gov.com",
+      "recipient": "taxpayer@email.com",
+      "subject": "IRS Tax Refund Notification - Action Required",
+      "body": "Dear Taxpayer,\n\nYou are eligible for a tax refund of $2,847.00. To receive your refund, please verify your identity:\n\nhttps://irs-tax-refund.gov.com/refund/claim?ssn=xxx&amount=2847\n\nFailure to verify within 7 days will result in forfeiture of your refund.\n\nInternal Revenue Service",
+      "expected_result": "phishing",
+      "indicators": ["fake gov domain", "tax refund bait", "personal info request"]
+    },
+    {
+      "name": "Apple ID Phishing",
+      "sender": "appleid@apple-id-verify.support",
+      "recipient": "iphoneuser@icloud.com",
+      "subject": "Your Apple ID Has Been Locked",
+      "body": "Dear Customer,\n\nYour Apple ID has been locked for security reasons. Someone tried to access your account from an unknown location.\n\nUnlock your account:\nhttps://apple-id-verify.support/unlock?appleid=iphoneuser\n\nApple Support",
+      "expected_result": "phishing",
+      "indicators": ["fake apple domain", "account lock scare", "unknown location threat"]
+    },
+    {
+      "name": "Crypto Giveaway Scam",
+      "sender": "giveaway@bitcoin-double.xyz",
+      "recipient": "crypto@protonmail.com",
+      "subject": "Elon Musk Bitcoin Giveaway - Double Your BTC!",
+      "body": "OFFICIAL ANNOUNCEMENT\n\nElon Musk is giving away Bitcoin! Send 0.1 BTC and receive 0.2 BTC back!\n\nParticipate now:\nhttps://bitcoin-double.xyz/giveaway?ref=elon2024\n\nLimited time offer! Only 1000 spots left!",
+      "expected_result": "phishing",
+      "indicators": ["crypto scam", "celebrity impersonation", "too good to be true"]
+    }
+  ],
+  "legitimate_emails": [
+    {
+      "name": "Real Google Security Alert",
+      "sender": "no-reply@accounts.google.com",
+      "recipient": "user@gmail.com",
+      "subject": "Security alert",
+      "body": "Hi User,\n\nWe noticed a new sign-in to your Google Account.\n\nIf this was you, you can ignore this message. If not, review your account activity:\nhttps://myaccount.google.com/security\n\nGoogle Security Team",
+      "expected_result": "safe",
+      "indicators": [
+        "legitimate google.com domain",
+        "no urgent action required",
+        "official subdomain"
+      ]
+    },
+    {
+      "name": "GitHub Notification",
+      "sender": "noreply@github.com",
+      "recipient": "developer@company.com",
+      "subject": "[GitHub] A new commit has been pushed",
+      "body": "A new commit was pushed to your repository.\n\nView the commit:\nhttps://github.com/user/repo/commit/abc123\n\nGitHub",
+      "expected_result": "safe",
+      "indicators": ["legitimate github.com domain", "standard notification"]
+    },
+    {
+      "name": "LinkedIn Connection Request",
+      "sender": "notifications@linkedin.com",
+      "recipient": "professional@work.com",
+      "subject": "John Doe wants to connect",
+      "body": "Hi,\n\nJohn Doe has sent you a connection request.\n\nView profile:\nhttps://www.linkedin.com/in/johndoe\n\nAccept or ignore this request at:\nhttps://www.linkedin.com/mynetwork/invitation-manager/\n\nLinkedIn",
+      "expected_result": "safe",
+      "indicators": ["legitimate linkedin.com domain", "standard social notification"]
+    },
+    {
+      "name": "Allegro Order Confirmation",
+      "sender": "powiadomienia@allegro.pl",
+      "recipient": "kupujacy@wp.pl",
+      "subject": "Potwierdzenie zamówienia #12345678",
+      "body": "Cześć,\n\nDziękujemy za złożenie zamówienia na Allegro.\n\nSzczegóły zamówienia:\nhttps://allegro.pl/moje-allegro/zakupy/zamowienie/12345678\n\nAllegro",
+      "expected_result": "safe",
+      "indicators": ["legitimate allegro.pl domain", "order confirmation"]
+    },
+    {
+      "name": "OLX Message Notification",
+      "sender": "no-reply@olx.pl",
+      "recipient": "sprzedawca@gmail.com",
+      "subject": "Nowa wiadomość do Twojego ogłoszenia",
+      "body": "Hej,\n\nMasz nową wiadomość dotyczącą ogłoszenia 'iPhone 13 Pro'.\n\nOdpowiedz:\nhttps://www.olx.pl/mojolx/wiadomosci/\n\nOLX",
+      "expected_result": "safe",
+      "indicators": ["legitimate olx.pl domain", "standard notification"]
+    },
+    {
+      "name": "Spotify Playlist Share",
+      "sender": "no-reply@spotify.com",
+      "recipient": "musicfan@email.com",
+      "subject": "Your friend shared a playlist with you",
+      "body": "Hey!\n\nYour friend shared a playlist: Summer Vibes 2024\n\nListen now:\nhttps://open.spotify.com/playlist/abc123xyz\n\nSpotify",
+      "expected_result": "safe",
+      "indicators": ["legitimate spotify.com domain", "social sharing"]
+    }
+  ],
+  "phishing_sms": [
+    {
+      "name": "Fake Delivery SMS",
+      "body": "InPost: Twoja paczka nie może zostać dostarczona. Dopłata 2,50 PLN wymagana. Kliknij: https://inpost-doplata.pl/pay?id=12345",
+      "expected_result": "phishing",
+      "indicators": ["fake inpost domain", "unexpected delivery fee"]
+    },
+    {
+      "name": "Bank SMS Scam",
+      "body": "PKO BP: Wykryto nieautoryzowaną transakcję na kwotę 1500 PLN. Aby zablokować, kliknij: https://pko-bp-bezpieczenstwo.com/blokada",
+      "expected_result": "phishing",
+      "indicators": ["fake bank domain", "transaction scare", "urgency"]
+    },
+    {
+      "name": "Prize SMS Scam",
+      "body": "Gratulacje! Wygrałeś iPhone 15 Pro w loterii Orange! Odbierz nagrodę: https://orange-nagrody.net/claim?winner=phone",
+      "expected_result": "phishing",
+      "indicators": ["fake orange domain", "prize scam", "too good to be true"]
+    },
+    {
+      "name": "Tax Office Scam",
+      "body": "Urząd Skarbowy: Masz do zwrotu 850 PLN. Podaj dane do przelewu: https://urzad-skarbowy-zwrot.pl/formularz",
+      "expected_result": "phishing",
+      "indicators": ["fake tax office domain", "money bait"]
+    },
+    {
+      "name": "WhatsApp Verification Scam",
+      "body": "WhatsApp: Twoje konto zostanie wyłączone. Potwierdź tożsamość: https://whatsapp-verify.com/confirm?phone=48123456789",
+      "expected_result": "phishing",
+      "indicators": ["fake whatsapp domain", "account disable threat"]
+    },
+    {
+      "name": "Crypto SMS Scam",
+      "body": "Bitcoin Alert: Otrzymałeś 0.5 BTC! Wypłać teraz: https://btc-withdraw-now.xyz/wallet?user=lucky",
+      "expected_result": "phishing",
+      "indicators": ["crypto scam", "unexpected money", "suspicious domain"]
+    },
+    {
+      "name": "Fake Tech Support",
+      "body": "Microsoft: Twój komputer został zainfekowany. Zadzwoń natychmiast: +48 123 456 789 lub odwiedź https://ms-support-pl.com/help",
+      "expected_result": "phishing",
+      "indicators": ["tech support scam", "fake microsoft domain"]
+    },
+    {
+      "name": "Loan Offer Scam",
+      "body": "KREDYT BEZ BIK! Nawet 50.000 PLN w 15 minut! Złóż wniosek: https://szybki-kredyt-online.pl/wniosek",
+      "expected_result": "phishing",
+      "indicators": ["too good to be true loan offer", "suspicious domain"]
+    }
+  ],
+  "legitimate_sms": [
+    {
+      "name": "Real Bank 2FA",
+      "body": "mBank: Kod autoryzacyjny do przelewu: 847291. Nie udostępniaj nikomu.",
+      "expected_result": "safe",
+      "indicators": ["no link", "standard 2FA code"]
+    },
+    {
+      "name": "Real Delivery Notification",
+      "body": "InPost: Twoja paczka jest gotowa do odbioru w Paczkomacie WAW123. Kod: 123456. Więcej na inpost.pl",
+      "expected_result": "safe",
+      "indicators": ["no suspicious link", "legitimate service", "pickup code"]
+    },
+    {
+      "name": "Real Allegro Code",
+      "body": "Allegro: Twój kod weryfikacyjny to 485721. Wpisz go na stronie allegro.pl",
+      "expected_result": "safe",
+      "indicators": ["no direct link", "standard verification"]
+    },
+    {
+      "name": "Real Medical Appointment",
+      "body": "Luxmed: Przypomnienie o wizycie 02.12.2024 o 14:00. Potwierdź odpowiadając TAK lub zadzwoń 22 332 28 88.",
+      "expected_result": "safe",
+      "indicators": ["no link", "appointment reminder", "phone number only"]
+    },
+    {
+      "name": "Real Parking Payment",
+      "body": "Strefa Płatnego Parkowania: Twój bilet parkingowy wygaśnie za 15 minut. Przedłuż przez aplikację lub automat.",
+      "expected_result": "safe",
+      "indicators": ["no suspicious link", "standard reminder"]
+    },
+    {
+      "name": "Real Flight Update",
+      "body": "LOT: Twój lot LO123 do Warszawy 02.12 o 18:30 jest opóźniony o 45 min. Sprawdź szczegóły na lot.com",
+      "expected_result": "safe",
+      "indicators": ["legitimate airline", "informational message"]
+    }
+  ],
+  "edge_cases": [
+    {
+      "name": "Shortened URL (Suspicious)",
+      "type": "email",
+      "body": "Click here to verify your account: https://bit.ly/3xYz123",
+      "expected_result": "suspicious",
+      "indicators": ["URL shortener hides destination"]
+    },
+    {
+      "name": "IP Address in URL",
+      "type": "email",
+      "body": "Login to your account: http://192.168.1.100/login.php?user=admin",
+      "expected_result": "phishing",
+      "indicators": ["IP address instead of domain", "HTTP not HTTPS"]
+    },
+    {
+      "name": "Homograph Attack",
+      "type": "email",
+      "body": "Verify your Apple ID: https://аpple.com/verify (uses Cyrillic 'а')",
+      "expected_result": "phishing",
+      "indicators": ["homograph attack", "lookalike domain"]
+    },
+    {
+      "name": "Legitimate Long URL",
+      "type": "email",
+      "body": "View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567&ref=ppx_yo_dt_b_order_details_o00",
+      "expected_result": "safe",
+      "indicators": ["legitimate amazon.com domain", "long but normal e-commerce URL"]
+    },
+    {
+      "name": "Subdomain Spoofing",
+      "type": "email",
+      "body": "Your package is ready: https://dhl.tracking-service-update.com/track?id=12345",
+      "expected_result": "phishing",
+      "indicators": ["legitimate brand as subdomain of malicious domain"]
+    }
+  ]
+}

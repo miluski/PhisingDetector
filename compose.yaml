@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: phishing-backend
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SSL_CERT_FILE=/app/certs/backend/cert.pem
+      - SSL_KEY_FILE=/app/certs/backend/key.pem
+      - HOST_BACKEND_PATH=${PWD}/backend
+    volumes:
+      - ./certs/backend:/app/certs/backend:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - '5001:5001'
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: phishing-frontend
+    environment:
+      - NODE_ENV=production
+      - SSL_CERT_FILE=/app/certs/frontend/cert.pem
+      - SSL_KEY_FILE=/app/certs/frontend/key.pem
+    volumes:
+      - ./certs/frontend:/app/certs/frontend:ro
+    ports:
+      - '4000:4000'
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+networks:
+  default:
+    name: phishing-net
