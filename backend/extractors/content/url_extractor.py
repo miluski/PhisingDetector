@@ -44,6 +44,10 @@ class URLExtractor:
     MIN_SLD_LENGTH = 3
     MIN_SUBDOMAIN_LENGTH = 3
 
+    IP_PATTERN = re.compile(
+        r'^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$'
+    )
+
     def __init__(self):
         self.url_pattern = re.compile(
             r'https?://'
@@ -51,6 +55,14 @@ class URLExtractor:
             r'[a-zA-Z0-9](?:[a-zA-Z0-9\-]*[a-zA-Z0-9])?'
             r'(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9\-]*[a-zA-Z0-9])?)*'
             r'\.[a-zA-Z]{2,}'
+            r'(?::\d{1,5})?'
+            r'(?:/[^\s\[\]<>\"\']*)?',
+            re.IGNORECASE
+        )
+
+        self.ip_url_pattern = re.compile(
+            r'https?://'
+            r'(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)'
             r'(?::\d{1,5})?'
             r'(?:/[^\s\[\]<>\"\']*)?',
             re.IGNORECASE
@@ -76,6 +88,11 @@ class URLExtractor:
             url = self._clean_url(url)
             if self._is_valid_url(url):
                 urls.add(url)
+
+        for match in self.ip_url_pattern.finditer(text):
+            url = match.group(0)
+            url = self._clean_url(url)
+            urls.add(url)
 
         for match in self.bare_domain_pattern.finditer(text):
             full_match = match.group(0)
@@ -144,6 +161,9 @@ class URLExtractor:
 
             if len(domain) < 4:
                 return False
+
+            if self.IP_PATTERN.match(domain_lower):
+                return True
 
             parts = domain_lower.split('.')
 
