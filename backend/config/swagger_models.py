@@ -24,7 +24,10 @@ class SwaggerModels:
             'success': fields.Boolean(description='Analysis success status'),
             'error': fields.String(description='Error message if failed'),
             'predictions': fields.List(fields.Nested(model_prediction)),
+            'ensemble': fields.Raw(description='Ensemble prediction result'),
             'features': fields.Raw(description='Extracted URL features'),
+            'visualizations': fields.Raw(description='Visualization charts as base64'),
+            'similar_samples': fields.Raw(description='Similar samples from dataset'),
             'is_phishing': fields.Boolean(description='Overall phishing verdict')
         })
 
