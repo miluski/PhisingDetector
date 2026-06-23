@@ -2,7 +2,7 @@ from flask_restx import Resource
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import HTTPException
 from app.api import core_ns, models
-from app.dependencies import mode_validator, phishing_service
+from app.dependencies import mode_validator, dataset_validator, phishing_service
 from config.logging_config import get_logger
 
 logger = get_logger("API.AnalyzeEmail")
@@ -13,6 +13,7 @@ EMAIL_PARSER.add_argument('sender', location='form')
 EMAIL_PARSER.add_argument('receiver', location='form')
 EMAIL_PARSER.add_argument('content', location='form', required=True)
 EMAIL_PARSER.add_argument('mode', location='form')
+EMAIL_PARSER.add_argument('dataset', location='form')
 EMAIL_PARSER.add_argument('models', location='form', action='append')
 EMAIL_PARSER.add_argument('attachments', type=FileStorage, location='files', action='append')
 
@@ -38,9 +39,11 @@ class AnalyzeEmailResource(Resource):
             logger.info(f"   Receiver: {payload['receiver'] or '(not provided)'}")
             logger.info(f"   Content length: {len(payload['content'])} chars")
             logger.info(f"   Mode: {payload['mode']}")
+            logger.info(f"   Dataset: {payload['dataset']}")
             logger.info(f"   Models: {payload['models']}")
 
             mode_validator.validate_or_raise(payload['mode'])
+            dataset_validator.validate_or_raise(payload['dataset'])
             attachments = self._prepare_attachments(args.get('attachments'))
 
             if attachments:
@@ -71,6 +74,7 @@ class AnalyzeEmailResource(Resource):
             'receiver': self._clean_string(args.get('receiver')),
             'content': self._clean_string(args.get('content')),
             'mode': self._resolve_mode(args.get('mode')),
+            'dataset': self._resolve_dataset(args.get('dataset')),
             'models': self._resolve_models(args.get('models'))
         }
 
@@ -81,6 +85,11 @@ class AnalyzeEmailResource(Resource):
         normalized = self._clean_string(mode)
         normalized = normalized.lower() if normalized else 'optimized'
         return normalized or 'optimized'
+
+    def _resolve_dataset(self, dataset):
+        normalized = self._clean_string(dataset)
+        normalized = normalized.lower() if normalized else 'current'
+        return normalized or 'current'
 
     def _resolve_models(self, raw):
         if not raw:
@@ -107,7 +116,8 @@ class AnalyzeEmailResource(Resource):
             'content': payload['content'],
             'attachments': attachments,
             'models': payload['models'],
-            'mode': payload['mode']
+            'mode': payload['mode'],
+            'dataset': payload['dataset']
         }
 
     def _error_response(self, message, status_code):

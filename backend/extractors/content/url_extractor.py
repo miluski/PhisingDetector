@@ -1,9 +1,10 @@
 import re
-from typing import List, Set
 from email.utils import parseaddr
-import PyPDF2
-import docx
 from io import BytesIO
+from typing import List, Set
+
+import docx
+import PyPDF2
 
 
 class URLExtractor:
@@ -84,20 +85,16 @@ class URLExtractor:
         urls = set()
 
         for match in self.url_pattern.finditer(text):
-            url = match.group(0)
-            url = self._clean_url(url)
+            url = self._clean_url(match.group(0))
             if self._is_valid_url(url):
                 urls.add(url)
 
         for match in self.ip_url_pattern.finditer(text):
-            url = match.group(0)
-            url = self._clean_url(url)
-            urls.add(url)
+            urls.add(self._clean_url(match.group(0)))
 
         for match in self.bare_domain_pattern.finditer(text):
             full_match = match.group(0)
             tld = match.group(3).lower()
-
             if tld not in self.VALID_TLDS:
                 continue
 
@@ -129,17 +126,15 @@ class URLExtractor:
             url = url[:-1]
 
         url = re.sub(r'\[\d+\]$', '', url)
-        url = re.sub(r'(\.(html?|php|aspx?|jsp|pdf|txt))([A-Z][a-zA-Z]+)$', r'\1', url, flags=re.IGNORECASE)
+        url = re.sub(r'(\.(html?|php|aspx?|jsp|pdf|txt))([A-Z][a-zA-Z]+)$',
+                     r'\1', url, flags=re.IGNORECASE)
         url = re.sub(r'(/[a-z_\-]+)([A-Z][a-z]+)$', r'\1', url)
         url = re.sub(r'(#[\w\-]+)([A-Z][a-z]+.*)$', r'\1', url)
-        url = url.rstrip('-')
-
-        return url
+        return url.rstrip('-')
 
     def _is_valid_url(self, url: str) -> bool:
         try:
             url_lower = url.lower()
-
             if url_lower.startswith('https://'):
                 domain_part = url[8:]
             elif url_lower.startswith('http://'):
@@ -153,34 +148,25 @@ class URLExtractor:
             domain = domain_part.split('/')[0].split(':')[0].split('?')[0].split('#')[0]
             domain_lower = domain.lower()
 
-            if domain_lower in self.BLACKLISTED_DOMAINS:
-                return False
-
-            if '.' not in domain:
-                return False
-
-            if len(domain) < 4:
+            if domain_lower in self.BLACKLISTED_DOMAINS or '.' not in domain or len(domain) < 4:
                 return False
 
             if self.IP_PATTERN.match(domain_lower):
                 return True
 
             parts = domain_lower.split('.')
-
             tld = parts[-1]
             if tld not in self.VALID_TLDS:
                 return False
 
             sld = parts[-2] if len(parts) >= 2 else ''
-
             if sld.lower() in {'asp', 'vb', 'ado', 'wpf', 'linq', 'wcf', 'mvc', 'iplatforma'}:
                 if tld == 'net':
                     return False
 
             full_domain = '.'.join(parts[-2:])
-            if len(sld) < self.MIN_SLD_LENGTH:
-                if full_domain not in self.KNOWN_SHORT_DOMAINS:
-                    return False
+            if len(sld) < self.MIN_SLD_LENGTH and full_domain not in self.KNOWN_SHORT_DOMAINS:
+                return False
 
             if not self._looks_like_real_word(sld):
                 return False
@@ -188,13 +174,10 @@ class URLExtractor:
             for i, part in enumerate(parts[:-1]):
                 if not self._is_valid_domain_part(part):
                     return False
-
-                if i == 0 and len(parts) > 2:
-                    if not self._is_valid_subdomain(part):
-                        return False
+                if i == 0 and len(parts) > 2 and not self._is_valid_subdomain(part):
+                    return False
 
             return True
-
         except Exception:
             return False
 
@@ -207,7 +190,6 @@ class URLExtractor:
 
         vowels = set('aeiou')
         vowel_count = sum(1 for c in word.lower() if c in vowels)
-
         if vowel_count == 0:
             return False
 
@@ -221,42 +203,27 @@ class URLExtractor:
             else:
                 current_run = 0
 
-        if max_consonant_run > 4:
-            return False
-
-        return True
+        return max_consonant_run <= 4
 
     def _is_valid_domain_part(self, part: str) -> bool:
         if len(part) < 2:
             return False
-
-        if not re.match(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$', part, re.IGNORECASE):
-            return False
-
-        return True
+        return bool(re.match(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$', part, re.IGNORECASE))
 
     def _is_valid_subdomain(self, subdomain: str) -> bool:
         subdomain_lower = subdomain.lower()
-
         if subdomain_lower in self.TRUNCATED_SUBDOMAINS:
             return False
-
         if len(subdomain) < self.MIN_SUBDOMAIN_LENGTH:
             return False
-
         if subdomain.isdigit():
             return True
-
         if not self._looks_like_real_word(subdomain):
             return False
 
         vowels = set('aeiou')
         vowel_count = sum(1 for c in subdomain_lower if c in vowels)
-
-        if len(subdomain) >= 5 and vowel_count < 2:
-            return False
-
-        return True
+        return not (len(subdomain) >= 5 and vowel_count < 2)
 
     def extract_from_email_address(self, email: str) -> Set[str]:
         urls = set()
@@ -265,8 +232,7 @@ class URLExtractor:
 
         _, addr = parseaddr(email)
         if '@' in addr:
-            domain = addr.split('@')[1]
-            test_url = f"https://{domain}"
+            test_url = f"https://{addr.split('@')[1]}"
             if self._is_valid_url(test_url):
                 urls.add(test_url)
 
@@ -277,13 +243,10 @@ class URLExtractor:
         try:
             pdf_file = BytesIO(file_content)
             pdf_reader = PyPDF2.PdfReader(pdf_file)
-
             for page in pdf_reader.pages:
                 urls.update(self._extract_urls_from_pdf_annotations(page))
-
         except Exception:
             pass
-
         return urls
 
     def _extract_urls_from_pdf_annotations(self, page) -> Set[str]:
@@ -291,7 +254,6 @@ class URLExtractor:
         try:
             if '/Annots' not in page:
                 return urls
-
             annotations = page['/Annots']
             if not annotations:
                 return urls
@@ -301,7 +263,6 @@ class URLExtractor:
                     annot = annot_ref.get_object()
                     if annot.get('/Subtype') != '/Link':
                         continue
-
                     action = annot.get('/A')
                     if action and '/URI' in action:
                         uri = action['/URI']
@@ -309,10 +270,8 @@ class URLExtractor:
                             urls.add(uri)
                 except Exception:
                     continue
-
         except Exception:
             pass
-
         return urls
 
     def extract_from_docx(self, file_content: bytes) -> Set[str]:
@@ -320,16 +279,13 @@ class URLExtractor:
         try:
             doc_file = BytesIO(file_content)
             doc = docx.Document(doc_file)
-
             for rel in doc.part.rels.values():
                 if "hyperlink" in rel.reltype:
                     target = rel._target
                     if target and isinstance(target, str) and target.startswith('http'):
                         urls.add(target)
-
         except Exception:
             pass
-
         return urls
 
     def extract_from_attachment(self, file_content: bytes, filename: str) -> Set[str]:
@@ -342,8 +298,7 @@ class URLExtractor:
             urls.update(self.extract_from_docx(file_content))
         elif filename_lower.endswith('.txt'):
             try:
-                text = file_content.decode('utf-8')
-                urls.update(self.extract_from_text(text))
+                urls.update(self.extract_from_text(file_content.decode('utf-8')))
             except Exception:
                 pass
 
@@ -360,21 +315,15 @@ class URLExtractor:
 
         if sender:
             all_urls.update(self.extract_from_email_address(sender))
-
         if receiver:
             all_urls.update(self.extract_from_email_address(receiver))
-
         if content:
             all_urls.update(self.extract_from_text(content))
-
         if attachments:
             for attachment in attachments:
                 file_content = attachment.get('content')
                 filename = attachment.get('filename', '')
-
                 if file_content:
-                    all_urls.update(
-                        self.extract_from_attachment(file_content, filename)
-                    )
+                    all_urls.update(self.extract_from_attachment(file_content, filename))
 
         return list(all_urls)

@@ -21,15 +21,17 @@ class SandboxRunner:
         self.feature_service = None
         self.prediction_service = None
 
-    def _load_config(self) -> Tuple[List[str], List[str], str]:
+    def _load_config(self) -> Tuple[List[str], List[str], str, str]:
         urls = json.loads(os.environ.get('URLS', '[]'))
         models = json.loads(os.environ.get('MODELS', '[]'))
         mode = os.environ.get('MODE', 'optimized')
-        return urls, models, mode
+        dataset = os.environ.get('DATASET', 'current')
+        return urls, models, mode, dataset
 
-    def _log_config(self, urls: List[str], models: List[str], mode: str):
-        logger.info(f"📋 Configuration:")
+    def _log_config(self, urls: List[str], models: List[str], mode: str, dataset: str):
+        logger.info("📋 Configuration:")
         logger.info(f"   Mode: {mode}")
+        logger.info(f"   Dataset: {dataset}")
         logger.info(f"   Models: {models}")
         logger.info(f"   URLs to analyze: {len(urls)}")
         for i, url in enumerate(urls, 1):
@@ -50,16 +52,16 @@ class SandboxRunner:
         logger.info(f"   ✅ Extracted {len(features)} features")
         return features
 
-    def _run_predictions(self, features: Dict, models: List[str], mode: str) -> tuple:
+    def _run_predictions(self, features: Dict, models: List[str], mode: str, dataset: str) -> tuple:
         logger.info(f"   🤖 Running predictions with {len(models)} model(s)...")
         for model_name in models:
             logger.info(f"      - Loading model: {model_name}")
-        predictions, similar_samples = self.prediction_service.predict_multiple_models(features, models, mode)
+        predictions, similar_samples = self.prediction_service.predict_multiple_models(features, models, mode, dataset)
         self._log_predictions(predictions)
         return predictions, similar_samples
 
     def _log_predictions(self, predictions: List[Dict]):
-        logger.info(f"   ✅ Predictions complete")
+        logger.info("   ✅ Predictions complete")
         for pred in predictions:
             if 'error' in pred:
                 logger.warning(f"      {pred['model']}: ❌ ERROR - {pred['error']}")
@@ -67,9 +69,9 @@ class SandboxRunner:
             status = "🚨 PHISHING" if pred['prediction'] == 1 else "✅ SAFE"
             logger.info(f"      {pred['model']}: {status} (confidence: {pred['confidence']*100:.1f}%)")
 
-    def _compute_ensemble(self, features: Dict, models: List[str], mode: str) -> Dict:
+    def _compute_ensemble(self, features: Dict, models: List[str], mode: str, dataset: str) -> Dict:
         logger.info("   🎯 Computing ensemble prediction...")
-        ensemble = self.prediction_service.get_ensemble_prediction(features, models, mode)
+        ensemble = self.prediction_service.get_ensemble_prediction(features, models, mode, dataset)
         self._log_ensemble(ensemble)
         return ensemble
 
@@ -79,15 +81,15 @@ class SandboxRunner:
         logger.info(f"      Voting: {ensemble['models_voting']['phishing']} phishing / {ensemble['models_voting']['safe']} safe")
         logger.info(f"      Confidence: {ensemble['confidence']*100:.1f}%")
 
-    def _analyze_url(self, url: str, idx: int, total: int, models: List[str], mode: str) -> Dict:
+    def _analyze_url(self, url: str, idx: int, total: int, models: List[str], mode: str, dataset: str) -> Dict:
         logger.info("-" * 60)
         logger.info(f"🔍 ANALYZING URL {idx}/{total}: {url}")
         url_result = {'url': url, 'success': False}
 
         try:
             features = self._extract_features(url, mode)
-            predictions, similar_samples = self._run_predictions(features, models, mode)
-            ensemble = self._compute_ensemble(features, models, mode)
+            predictions, similar_samples = self._run_predictions(features, models, mode, dataset)
+            ensemble = self._compute_ensemble(features, models, mode, dataset)
             url_result.update({
                 'success': True,
                 'features': features,
@@ -96,7 +98,7 @@ class SandboxRunner:
                 'similar_samples': similar_samples
             })
         except Exception as e:
-            logger.error(f"   ❌ Error analyzing URL: {e}")
+            logger.exception("   ❌ Error analyzing URL")
             url_result['error'] = str(e)
 
         return url_result
@@ -105,7 +107,7 @@ class SandboxRunner:
         duration = (datetime.now() - self.start_time).total_seconds()
         successful = sum(1 for r in results if r.get('success'))
         logger.info("=" * 60)
-        logger.info(f"✅ SANDBOX ANALYSIS COMPLETE")
+        logger.info("✅ SANDBOX ANALYSIS COMPLETE")
         logger.info(f"   Duration: {duration:.2f}s")
         logger.info(f"   URLs processed: {len(urls)}")
         logger.info(f"   Successful: {successful}/{len(urls)}")
@@ -116,14 +118,21 @@ class SandboxRunner:
         logger.info("🔒 SANDBOX CONTAINER STARTED")
         logger.info("=" * 60)
 
-        urls, models, mode = self._load_config()
-        self._log_config(urls, models, mode)
+        urls, models, mode, dataset = self._load_config()
+        self._log_config(urls, models, mode, dataset)
         self._initialize_services()
 
-        results = [self._analyze_url(url, i, len(urls), models, mode) for i, url in enumerate(urls, 1)]
+        results = [self._analyze_url(url, i, len(urls), models, mode, dataset) for i, url in enumerate(urls, 1)]
         self._log_completion(results, urls)
 
-        return {'success': True, 'results': results, 'total_urls': len(urls), 'mode': mode, 'models': models}
+        return {
+            'success': True,
+            'results': results,
+            'total_urls': len(urls),
+            'mode': mode,
+            'dataset': dataset,
+            'models': models
+        }
 
 
 def main():
@@ -133,7 +142,7 @@ def main():
         print(json.dumps(output))
         sys.exit(0)
     except Exception as e:
-        logger.error(f"❌ SANDBOX CRITICAL ERROR: {e}")
+        logger.exception("❌ SANDBOX CRITICAL ERROR")
         print(json.dumps({'success': False, 'error': str(e)}))
         sys.exit(1)
 

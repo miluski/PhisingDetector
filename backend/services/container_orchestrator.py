@@ -91,27 +91,28 @@ class ContainerOrchestrator:
         return volumes
 
     def _log_volumes(self, base: Path):
-        logger.debug(f"   Volume mounts prepared (host paths):")
+        logger.debug("   Volume mounts prepared (host paths):")
         logger.debug(f"      - {base / 'models'} -> /app/models (read-only)")
         logger.debug(f"      - {base / 'data'} -> /app/data (read-only)")
         logger.debug(f"      - {base / 'extractors'} -> /app/extractors (read-only)")
         logger.debug(f"      - {base / 'services'} -> /app/services (read-only)")
         logger.debug(f"      - {base / 'config'} -> /app/config (read-only)")
 
-    def _prepare_environment(self, urls: List[str], models: List[str], mode: str) -> Dict[str, str]:
-        env = {'URLS': json.dumps(urls), 'MODELS': json.dumps(models), 'MODE': mode}
-        self._log_environment(urls, models, mode)
+    def _prepare_environment(self, urls: List[str], models: List[str], mode: str, dataset: str) -> Dict[str, str]:
+        env = {'URLS': json.dumps(urls), 'MODELS': json.dumps(models), 'MODE': mode, 'DATASET': dataset}
+        self._log_environment(urls, models, mode, dataset)
         return env
 
-    def _log_environment(self, urls: List[str], models: List[str], mode: str):
-        logger.debug(f"   Environment variables:")
+    def _log_environment(self, urls: List[str], models: List[str], mode: str, dataset: str):
+        logger.debug("   Environment variables:")
         logger.debug(f"      - URLS: {urls}")
         logger.debug(f"      - MODELS: {models}")
         logger.debug(f"      - MODE: {mode}")
+        logger.debug(f"      - DATASET: {dataset}")
 
-    def _log_container_creation(self, container_id: str, container_name: str, urls: List[str], models: List[str], mode: str):
+    def _log_container_creation(self, container_id: str, container_name: str, urls: List[str], models: List[str], mode: str, dataset: str):
         logger.info(f"{'='*60}")
-        logger.info(f"🐳 CREATING SANDBOX CONTAINER")
+        logger.info("🐳 CREATING SANDBOX CONTAINER")
         logger.info(f"   Container ID: {container_id}")
         logger.info(f"   Container Name: {container_name}")
         logger.info(f"   Image: {self.image_name}")
@@ -120,6 +121,7 @@ class ContainerOrchestrator:
             logger.info(f"      {i}. {url}")
         logger.info(f"   Models: {models}")
         logger.info(f"   Mode: {mode}")
+        logger.info(f"   Dataset: {dataset}")
         logger.info(f"{'='*60}")
 
     def _log_container_config(self):
@@ -143,22 +145,22 @@ class ContainerOrchestrator:
             auto_remove=False
         )
 
-    def create_container(self, urls: List[str], models: List[str], mode: str = "optimized") -> str:
+    def create_container(self, urls: List[str], models: List[str], mode: str = "optimized", dataset: str = 'current') -> str:
         self._require_client()
         self.ensure_image_exists()
 
         container_id = str(uuid.uuid4())
         container_name = f"phishing-sandbox-{container_id}"
-        self._log_container_creation(container_id, container_name, urls, models, mode)
+        self._log_container_creation(container_id, container_name, urls, models, mode, dataset)
 
-        environment = self._prepare_environment(urls, models, mode)
+        environment = self._prepare_environment(urls, models, mode, dataset)
         volumes = self._prepare_volumes()
         self._log_container_config()
 
         container = self._run_container(container_name, environment, volumes)
         self.containers[container_id] = container
 
-        logger.info(f"   ✅ Container created successfully!")
+        logger.info("   ✅ Container created successfully!")
         logger.info(f"      Docker Container ID: {container.short_id}")
         logger.info(f"      Status: {container.status}")
         return container_id
@@ -166,7 +168,7 @@ class ContainerOrchestrator:
     def _parse_container_logs(self, logs: str) -> Dict[str, Any]:
         try:
             result = json.loads(logs.split('\n')[-2])
-            logger.debug(f"   📄 Container output parsed successfully")
+            logger.debug("   📄 Container output parsed successfully")
             return result
         except (json.JSONDecodeError, IndexError) as e:
             logger.error(f"   ❌ Failed to parse container output: {e}")
@@ -190,12 +192,12 @@ class ContainerOrchestrator:
         logger.info(f"   ⏳ Waiting for container to complete (timeout: {timeout}s)...")
 
         try:
-            return self._wait_and_parse(container, container_id, timeout)
+            return self._wait_and_parse(container, timeout)
         except Exception as e:
             logger.error(f"   ❌ Error waiting for container: {e}")
             return {'success': False, 'error': str(e), 'container_id': container_id}
 
-    def _wait_and_parse(self, container, container_id: str, timeout: int) -> Dict[str, Any]:
+    def _wait_and_parse(self, container, timeout: int) -> Dict[str, Any]:
         result = container.wait(timeout=timeout)
         exit_code = result.get('StatusCode', -1)
         logger.info(f"   📦 Container finished with exit code: {exit_code}")
@@ -222,14 +224,14 @@ class ContainerOrchestrator:
     def _stop_container(self, container):
         try:
             container.stop(timeout=10)
-            logger.debug(f"      - Container stopped")
+            logger.debug("      - Container stopped")
         except Exception as e:
             logger.debug(f"      - Stop failed (may already be stopped): {e}")
 
     def _remove_container(self, container):
         try:
             container.remove(force=True, v=True)
-            logger.debug(f"      - Container and volumes removed")
+            logger.debug("      - Container and volumes removed")
         except Exception as e:
             logger.debug(f"      - Remove failed: {e}")
 

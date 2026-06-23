@@ -1,6 +1,9 @@
+export type DatasetType = 'current' | 'url_corpus';
+
 export interface PhishingAnalysisResponse {
   success: boolean;
   is_phishing: boolean;
+  dataset?: DatasetType;
   message?: string;
   error?: string;
   urls_found: number;
@@ -31,6 +34,7 @@ export interface SimilarSample {
 export interface ModelPrediction {
   model: string;
   mode: string;
+  dataset?: DatasetType;
   prediction: number;
   prediction_label: string;
   probabilities: {
@@ -60,6 +64,7 @@ export interface Feature {
 export interface EnsemblePrediction {
   ensemble_prediction: number;
   ensemble_label: string;
+  dataset?: DatasetType;
   models_voting: {
     phishing: number;
     safe: number;
@@ -90,4 +95,9 @@ export const AVAILABLE_MODELS = [
     name: 'Regresja logistyczna',
     description: 'Model liniowy (92% dokładność)',
   },
+];
+
+export const AVAILABLE_DATASETS = [
+  { id: 'current', name: 'Obecny zbiór', description: 'Aktualny zbiór bazowy projektu' },
+  { id: 'url_corpus', name: 'URL corpus', description: 'Nowy zbiór z feedów phishing + Tranco' },
 ];

@@ -9,52 +9,51 @@ logger = logging.getLogger("SimilarSampleFinder")
 
 class SimilarSampleFinder:
     def __init__(self):
-        self.dataset_full: Optional[pd.DataFrame] = None
-        self.dataset_optimized: Optional[pd.DataFrame] = None
+        self.datasets: Dict[str, Dict[str, Optional[pd.DataFrame]]] = {
+            'current': {'full': None, 'optimized': None},
+            'url_corpus': {'full': None, 'optimized': None}
+        }
         self._load_datasets()
 
     def _load_datasets(self):
         base_path = Path(__file__).parent.parent / 'data'
         logger.info(f"Loading datasets from: {base_path}")
 
-        full_path = base_path / 'dataset_full.csv'
-        if full_path.exists():
-            self.dataset_full = pd.read_csv(full_path)
-            logger.info(f"Loaded dataset_full.csv: {len(self.dataset_full)} samples")
-        else:
-            logger.warning(f"Dataset not found: {full_path}")
+        self._load_dataset_variant(base_path / 'dataset_full.csv', 'current', 'full')
+        self._load_dataset_variant(base_path / 'dataset_optimized.csv', 'current', 'optimized')
+        self._load_dataset_variant(base_path / 'url_corpus' / 'dataset_full.csv', 'url_corpus', 'full')
+        self._load_dataset_variant(base_path / 'url_corpus' / 'dataset_optimized.csv', 'url_corpus', 'optimized')
 
-        optimized_path = base_path / 'dataset_optimized.csv'
-        if optimized_path.exists():
-            self.dataset_optimized = pd.read_csv(optimized_path)
-            logger.info(f"Loaded dataset_optimized.csv: {len(self.dataset_optimized)} samples")
-        else:
-            logger.warning(f"Dataset not found: {optimized_path}")
+    def _load_dataset_variant(self, path: Path, dataset: str, mode: str):
+        if path.exists():
+            self.datasets[dataset][mode] = pd.read_csv(path)
+            logger.info(f"Loaded {dataset}/{mode}: {len(self.datasets[dataset][mode])} samples")
+            return
+        logger.warning(f"Dataset not found: {path}")
 
-    def find_similar_samples(
-        self,
-        features: Dict[str, float],
-        mode: str = 'optimized',
-        top_k: int = 5
-    ) -> List[Dict]:
-        dataset = self.dataset_optimized if mode == 'optimized' else self.dataset_full
-        logger.info(f"Finding similar samples | mode={mode} | dataset={'loaded' if dataset is not None else 'None'}")
+    def _normalize_dataset(self, dataset: str) -> str:
+        normalized = (dataset or 'current').strip().lower()
+        return normalized if normalized in self.datasets else 'current'
 
-        if dataset is None:
-            logger.warning("Dataset is None, returning empty list")
-            return []
+    def _get_dataset_df(self, mode: str, dataset: str) -> Optional[pd.DataFrame]:
+        dataset_key = self._normalize_dataset(dataset)
+        mode_key = 'optimized' if mode == 'optimized' else 'full'
+        dataset_df = self.datasets[dataset_key][mode_key]
+        logger.info(
+            "Finding similar samples | mode=%s | dataset=%s | loaded=%s",
+            mode_key,
+            dataset_key,
+            'yes' if dataset_df is not None else 'no'
+        )
+        return dataset_df
 
-        feature_cols = [col for col in dataset.columns if col != 'phishing']
+    def _get_available_features(self, dataset_df: pd.DataFrame, features: Dict[str, float]) -> List[str]:
+        feature_cols = [col for col in dataset_df.columns if col != 'phishing']
         available_features = [f for f in feature_cols if f in features]
-        logger.info(f"Available features: {len(available_features)}/{len(feature_cols)}")
+        logger.info("Available features: %d/%d", len(available_features), len(feature_cols))
+        return available_features
 
-        if not available_features:
-            logger.warning("No available features, returning empty list")
-            return []
-
-        sample_values = np.array([features.get(f, 0) for f in available_features])
-        dataset_values = dataset[available_features].values
-
+    def _compute_distances(self, dataset_values: np.ndarray, sample_values: np.ndarray) -> np.ndarray:
         sample_valid = sample_values != -1
         dataset_valid = dataset_values != -1
 
@@ -70,46 +69,91 @@ class SimilarSampleFinder:
 
             sample_norm = self._normalize(sample_subset)
             row_norm = self._normalize(row_subset)
-
             dist = np.sqrt(np.sum((sample_norm - row_norm) ** 2))
             distances.append(dist)
 
-        distances = np.array(distances)
-        top_indices = np.argsort(distances)[:top_k * 2]
+        return np.array(distances)
 
-        results = []
-        phishing_count = 0
-        legitimate_count = 0
-        max_per_class = (top_k + 1) // 2
+    def _try_add_result(
+        self,
+        results: List[Dict],
+        row: pd.Series,
+        idx: int,
+        distance: float,
+        available_features: List[str],
+        limits: Dict[str, int]
+    ) -> bool:
+        is_phishing = int(row['phishing'])
+
+        if is_phishing and limits['phishing'] >= limits['max_per_class']:
+            return False
+        if not is_phishing and limits['legitimate'] >= limits['max_per_class']:
+            return False
+
+        if is_phishing:
+            limits['phishing'] += 1
+        else:
+            limits['legitimate'] += 1
+
+        sample_data = {
+            'index': int(idx),
+            'distance': float(distance),
+            'is_phishing': bool(is_phishing),
+            'features': {}
+        }
+
+        for feature in available_features[:20]:
+            sample_data['features'][feature] = float(row[feature])
+
+        results.append(sample_data)
+        return True
+
+    def _select_results(
+        self,
+        dataset_df: pd.DataFrame,
+        available_features: List[str],
+        distances: np.ndarray,
+        top_k: int
+    ) -> List[Dict]:
+        top_indices = np.argsort(distances)[:top_k * 2]
+        results: List[Dict] = []
+        limits = {
+            'phishing': 0,
+            'legitimate': 0,
+            'max_per_class': (top_k + 1) // 2
+        }
 
         for idx in top_indices:
             if len(results) >= top_k:
                 break
+            row = dataset_df.iloc[idx]
+            self._try_add_result(results, row, idx, distances[idx], available_features, limits)
 
-            row = dataset.iloc[idx]
-            is_phishing = int(row['phishing'])
+        return results
 
-            if is_phishing and phishing_count >= max_per_class:
-                continue
-            if not is_phishing and legitimate_count >= max_per_class:
-                continue
+    def find_similar_samples(
+        self,
+        features: Dict[str, float],
+        mode: str = 'optimized',
+        dataset: str = 'current',
+        top_k: int = 5
+    ) -> List[Dict]:
+        dataset_df = self._get_dataset_df(mode, dataset)
 
-            if is_phishing:
-                phishing_count += 1
-            else:
-                legitimate_count += 1
+        if dataset_df is None:
+            logger.warning("Dataset is None, returning empty list")
+            return []
 
-            sample_data = {
-                'index': int(idx),
-                'distance': float(distances[idx]),
-                'is_phishing': bool(is_phishing),
-                'features': {}
-            }
+        available_features = self._get_available_features(dataset_df, features)
 
-            for feature in available_features[:20]:
-                sample_data['features'][feature] = float(row[feature])
+        if not available_features:
+            logger.warning("No available features, returning empty list")
+            return []
 
-            results.append(sample_data)
+        sample_values = np.array([features.get(f, 0) for f in available_features])
+        dataset_values = dataset_df[available_features].values
+        distances = self._compute_distances(dataset_values, sample_values)
+        results = self._select_results(dataset_df, available_features, distances, top_k)
 
         logger.info(f"Found {len(results)} similar samples")
         return results
@@ -146,7 +190,7 @@ class SimilarSampleFinder:
         return comparison
 
     def get_dataset_statistics(self, mode: str = 'optimized') -> Dict:
-        dataset = self.dataset_optimized if mode == 'optimized' else self.dataset_full
+        dataset = self.datasets['current']['optimized'] if mode == 'optimized' else self.datasets['current']['full']
 
         if dataset is None:
             return {}

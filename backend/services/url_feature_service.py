@@ -1,5 +1,6 @@
 import os
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any
 from urllib.parse import urlparse
@@ -15,7 +16,6 @@ from extractors.network.response_timer import ResponseTimer
 from extractors.network.dns_resolver import DNSResolver
 from extractors.network.whois_extractor import WHOISExtractor
 from extractors.network.ssl_validator import SSLCertificateValidator
-from extractors.content.html_content_extractor import HTMLContentExtractor
 
 logger = logging.getLogger("URLFeatureService")
 
@@ -36,8 +36,9 @@ class URLFeatureService:
         'asn_ip': 22612,
     }
 
-    def __init__(self, timeout: int = 5):
+    def __init__(self, timeout: int = 5, apply_network_defaults: bool = True):
         self.timeout = timeout
+        self.apply_network_defaults = apply_network_defaults
         self.tld_extractor = self._create_tld_extractor()
         self._init_extractors()
         self._init_detectors()
@@ -47,10 +48,9 @@ class URLFeatureService:
         self.path_extractor = PathPartExtractor()
         self.params_extractor = ParamsExtractor()
         self.response_timer = ResponseTimer(self.timeout)
-        self.dns_resolver = DNSResolver()
+        self.dns_resolver = DNSResolver(self.timeout)
         self.whois_extractor = WHOISExtractor()
         self.ssl_validator = SSLCertificateValidator(self.timeout)
-        self.html_extractor = HTMLContentExtractor(self.timeout)
 
     def _init_detectors(self):
         self.email_detector = EmailDetector()
@@ -84,11 +84,31 @@ class URLFeatureService:
         features.update(self._extract_network(url, domain, mode))
 
         if mode == 'full':
-            logger.debug("      Extracting full mode features (special + HTML)...")
+            logger.debug("      Extracting full mode features...")
             features.update(self._extract_special_full(domain))
-            features.update(self.html_extractor.extract(url))
 
         logger.info(f"   ✅ Extracted {len(features)} features")
+        return features
+
+    def extract_offline(self, url: str, mode: str) -> Dict[str, Any]:
+        parsed = urlparse(url)
+        extracted = self.tld_extractor(url)
+
+        domain = self._build_domain(extracted)
+        directory = parsed.path.rsplit('/', 1)[0] if '/' in parsed.path else ''
+        file_part = parsed.path.rsplit('/', 1)[1] if '/' in parsed.path else ''
+        params = parsed.query
+
+        features = {}
+        features.update(self._extract_lexical(url, domain, directory, file_part, params, mode))
+        features.update(self.NETWORK_FEATURE_DEFAULTS)
+        features['url_shortened'] = self.shortener_detector.detect(domain)
+
+        if mode == 'full':
+            features.update(self._extract_special_full(domain))
+            features['url_google_index'] = 0
+            features['domain_google_index'] = 0
+
         return features
 
     def _create_tld_extractor(self):
@@ -124,23 +144,37 @@ class URLFeatureService:
         return features
 
     def _extract_network(self, url: str, domain: str, mode: str) -> Dict[str, Any]:
-        features = {}
+        domain_features = self._extract_domain_network(domain, mode)
+        features = dict(domain_features)
 
-        time_resp, redirects = self.response_timer.measure(url)
+        if domain_features.get('qty_ip_resolved', -1) > 0:
+            time_resp, redirects = self.response_timer.measure(url)
+        else:
+            time_resp, redirects = -1, -1
+
         features['time_response'] = time_resp
         features['qty_redirects'] = redirects
+        if self.apply_network_defaults:
+            self._apply_defaults(features)
+
+        return features
+
+    @lru_cache(maxsize=200000)
+    def _extract_domain_network(self, domain: str, mode: str) -> Dict[str, Any]:
+        features = {}
 
         features.update(self.dns_resolver.extract_all(domain))
         features.update(self.whois_extractor.extract_all(domain))
-        features['tls_ssl_certificate'] = self.ssl_validator.validate(domain)
+        if features.get('qty_ip_resolved', -1) > 0:
+            features['tls_ssl_certificate'] = self.ssl_validator.validate(domain)
+        else:
+            features['tls_ssl_certificate'] = -1
         features['url_shortened'] = self.shortener_detector.detect(domain)
         features['asn_ip'] = self.NETWORK_FEATURE_DEFAULTS['asn_ip']
 
         if mode == 'full':
             features['url_google_index'] = 0
             features['domain_google_index'] = 0
-
-        self._apply_defaults(features)
 
         return features
 

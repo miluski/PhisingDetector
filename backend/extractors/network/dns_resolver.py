@@ -7,10 +7,10 @@ logger = logging.getLogger("DNSResolver")
 
 class DNSResolver:
 
-    def __init__(self):
+    def __init__(self, timeout: int = 5, lifetime: int | None = None):
         self.resolver = dns.resolver.Resolver()
-        self.resolver.timeout = 5
-        self.resolver.lifetime = 10
+        self.resolver.timeout = timeout
+        self.resolver.lifetime = lifetime or timeout * 2
 
     def resolve_a_records(self, domain: str) -> tuple:
         try:

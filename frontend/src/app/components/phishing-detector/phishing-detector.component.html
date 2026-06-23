@@ -82,7 +82,7 @@
       </div>
 
       <div class="form-group">
-        <label>Tryb analizy</label>
+        <p>Tryb analizy</p>
         <div class="mode-selector">
           <label class="radio-label">
             <input type="radio" [(ngModel)]="mode" value="optimized" name="mode" />
@@ -96,7 +96,17 @@
       </div>
 
       <div class="form-group">
-        <label>Modele uczenia maszynowego</label>
+        <p>Zbiór modeli i próbek</p>
+        <div class="mode-selector">
+          <label class="radio-label" *ngFor="let ds of availableDatasets">
+            <input type="radio" [(ngModel)]="dataset" [value]="ds.id" name="dataset" />
+            <span>{{ ds.name }} ({{ ds.id }}) - {{ ds.description }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <p>Modele uczenia maszynowego</p>
         <div class="model-selection">
           <div class="model-buttons">
             <button (click)="selectAllModels()" class="select-button">Zaznacz wszystkie</button>
@@ -155,6 +165,10 @@
           <div class="summary-item">
             <span class="label">Tryb analizy:</span>
             <span class="value">{{ mode }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Zbiór:</span>
+            <span class="value">{{ result.dataset || dataset }}</span>
           </div>
         </div>
         <div *ngIf="result.urls.length > 0" class="urls-list">
@@ -242,7 +256,8 @@
                 <h5>Prawdopodobieństwa modeli</h5>
                 <img
                   [src]="
-                    'data:image/png;base64,' + urlAnalysis.visualizations!.charts!.probabilities
+                    'data:image/png;base64,' +
+                    (urlAnalysis.visualizations?.charts?.probabilities || '')
                   "
                   alt="Wykres prawdopodobieństw"
                 />
@@ -250,7 +265,9 @@
               <div *ngIf="urlAnalysis.visualizations?.charts?.voting" class="chart-card">
                 <h5>Głosowanie Random Forest</h5>
                 <img
-                  [src]="'data:image/png;base64,' + urlAnalysis.visualizations!.charts!.voting"
+                  [src]="
+                    'data:image/png;base64,' + (urlAnalysis.visualizations?.charts?.voting || '')
+                  "
                   alt="Wykres głosowania"
                 />
               </div>
@@ -262,7 +279,7 @@
                 <img
                   [src]="
                     'data:image/png;base64,' +
-                    urlAnalysis.visualizations!.charts!.feature_importance
+                    (urlAnalysis.visualizations?.charts?.feature_importance || '')
                   "
                   alt="Wykres ważności cech"
                 />
@@ -271,7 +288,8 @@
                 <h5>Głosowanie zespołowe</h5>
                 <img
                   [src]="
-                    'data:image/png;base64,' + urlAnalysis.visualizations!.charts!.ensemble_voting
+                    'data:image/png;base64,' +
+                    (urlAnalysis.visualizations?.charts?.ensemble_voting || '')
                   "
                   alt="Wykres głosowania zespołowego"
                 />

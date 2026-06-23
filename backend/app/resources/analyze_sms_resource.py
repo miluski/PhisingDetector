@@ -1,7 +1,7 @@
 from flask_restx import Resource
 from werkzeug.exceptions import HTTPException
 from app.api import core_ns, models
-from app.dependencies import mode_validator, phishing_service
+from app.dependencies import mode_validator, dataset_validator, phishing_service
 from config.logging_config import get_logger
 
 logger = get_logger("API.AnalyzeSMS")
@@ -11,6 +11,7 @@ SMS_PARSER = core_ns.parser()
 SMS_PARSER.add_argument('content', location='form', required=True)
 SMS_PARSER.add_argument('models', location='form', action='append')
 SMS_PARSER.add_argument('mode', location='form')
+SMS_PARSER.add_argument('dataset', location='form')
 
 @core_ns.route('/analyze-sms')
 class AnalyzeSmsResource(Resource):
@@ -31,9 +32,11 @@ class AnalyzeSmsResource(Resource):
 
             logger.info(f"   Content length: {len(payload['content'])} chars")
             logger.info(f"   Mode: {payload['mode']}")
+            logger.info(f"   Dataset: {payload['dataset']}")
             logger.info(f"   Models: {payload['models']}")
 
             mode_validator.validate_or_raise(payload['mode'])
+            dataset_validator.validate_or_raise(payload['dataset'])
 
             logger.info("   ➜ Forwarding to PhishingDetectionService...")
             result = phishing_service.analyze_sms(**payload)
@@ -57,7 +60,8 @@ class AnalyzeSmsResource(Resource):
         return {
             'content': content,
             'models': self._resolve_models(args.get('models')),
-            'mode': self._resolve_mode(args.get('mode'))
+            'mode': self._resolve_mode(args.get('mode')),
+            'dataset': self._resolve_dataset(args.get('dataset'))
         }
 
     def _clean_string(self, value):
@@ -74,6 +78,11 @@ class AnalyzeSmsResource(Resource):
         normalized = self._clean_string(mode)
         normalized = normalized.lower() if normalized else 'optimized'
         return normalized or 'optimized'
+
+    def _resolve_dataset(self, dataset):
+        normalized = self._clean_string(dataset)
+        normalized = normalized.lower() if normalized else 'current'
+        return normalized or 'current'
 
     def _error_response(self, message, status_code):
         return ({'success': False, 'error': message}, status_code)

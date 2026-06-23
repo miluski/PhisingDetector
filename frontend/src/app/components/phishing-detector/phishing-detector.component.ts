@@ -1,7 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AVAILABLE_MODELS, PhishingAnalysisResponse } from '../../models/phishing-analysis.model';
+import {
+  AVAILABLE_DATASETS,
+  AVAILABLE_MODELS,
+  DatasetType,
+  PhishingAnalysisResponse,
+} from '../../models/phishing-analysis.model';
 import { PhishingDetectionService } from '../../services/phishing-detection.service';
 
 @Component({
@@ -18,13 +23,15 @@ export class PhishingDetectorComponent {
   public content = '';
   public attachments: File[] = [];
   public mode: 'optimized' | 'full' = 'optimized';
+  public dataset: DatasetType = 'current';
   public availableModels = AVAILABLE_MODELS;
+  public availableDatasets = AVAILABLE_DATASETS;
   public selectedModels: string[] = ['random_forest'];
   public isAnalyzing = false;
   public result: PhishingAnalysisResponse | null = null;
   public error: string | null = null;
 
-  constructor(private phishingService: PhishingDetectionService) {}
+  constructor(private readonly phishingService: PhishingDetectionService) {}
 
   public toggleModel(modelId: string): void {
     const index = this.selectedModels.indexOf(modelId);
@@ -85,10 +92,12 @@ export class PhishingDetectorComponent {
   }
 
   private analyzeSmsContent(): void {
-    this.phishingService.analyzeSms(this.content, this.selectedModels, this.mode).subscribe({
-      next: (response) => this.handleAnalysisSuccess(response),
-      error: (err) => this.handleAnalysisError(err.error?.error || 'Analysis failed'),
-    });
+    this.phishingService
+      .analyzeSms(this.content, this.selectedModels, this.mode, this.dataset)
+      .subscribe({
+        next: (response) => this.handleAnalysisSuccess(response),
+        error: (err) => this.handleAnalysisError(err.error?.error || 'Analysis failed'),
+      });
   }
 
   private analyzeEmailContent(): void {
@@ -106,6 +115,7 @@ export class PhishingDetectorComponent {
     formData.append('receiver', this.receiver);
     formData.append('content', this.content);
     formData.append('mode', this.mode);
+    formData.append('dataset', this.dataset);
     this.selectedModels.forEach((model) => formData.append('models', model));
     this.attachments.forEach((file) => formData.append('attachments', file, file.name));
     return formData;
@@ -160,7 +170,7 @@ export class PhishingDetectorComponent {
   }
 
   public formatFeatureValue(value: number): string {
-    if (typeof value !== 'number' || isNaN(value)) {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
       return String(value);
     }
     return Number.isInteger(value) ? value.toString() : value.toFixed(4);

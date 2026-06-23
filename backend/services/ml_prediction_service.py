@@ -12,6 +12,7 @@ logger = logging.getLogger("MLPredictionService")
 class MLPredictionService:
     MODELS_WITH_MODEL_SUFFIX = {'xgboost', 'mlp', 'svm'}
     MODELS_REQUIRING_SCALER = {'mlp', 'svm', 'logistic_regression'}
+    VALID_DATASETS = {'current', 'url_corpus'}
 
     def __init__(self):
         self.models = {}
@@ -20,20 +21,29 @@ class MLPredictionService:
         self.similar_sample_finder = SimilarSampleFinder()
         logger.info(f"MLPredictionService initialized | Models dir: {self.models_dir}")
 
-    def _get_model_filename(self, model_name: str, mode: str) -> str:
+    def _normalize_dataset(self, dataset: str) -> str:
+        normalized = (dataset or 'current').strip().lower()
+        if normalized not in self.VALID_DATASETS:
+            return 'current'
+        return normalized
+
+    def _get_model_filename(self, model_name: str, mode: str, dataset: str = 'current') -> str:
+        suffix = '' if dataset == 'current' else '_url_corpus'
         if model_name in self.MODELS_WITH_MODEL_SUFFIX:
-            return f"{model_name}_model_{mode}.pkl"
-        return f"{model_name}_{mode}.pkl"
+            return f"{model_name}_model_{mode}{suffix}.pkl"
+        return f"{model_name}_{mode}{suffix}.pkl"
 
-    def _get_scaler_filename(self, model_name: str, mode: str) -> str:
-        return f"{model_name}_scaler_{mode}.pkl"
+    def _get_scaler_filename(self, model_name: str, mode: str, dataset: str = 'current') -> str:
+        suffix = '' if dataset == 'current' else '_url_corpus'
+        return f"{model_name}_scaler_{mode}{suffix}.pkl"
 
-    def _load_scaler(self, model_name: str, mode: str):
-        scaler_key = f"{model_name}_scaler_{mode}"
+    def _load_scaler(self, model_name: str, mode: str, dataset: str = 'current'):
+        dataset = self._normalize_dataset(dataset)
+        scaler_key = f"{model_name}_scaler_{mode}_{dataset}"
         if scaler_key in self.scalers:
             return self.scalers[scaler_key]
 
-        scaler_path = self.models_dir / model_name / self._get_scaler_filename(model_name, mode)
+        scaler_path = self.models_dir / model_name / self._get_scaler_filename(model_name, mode, dataset)
         if scaler_path.exists():
             with open(scaler_path, 'rb') as f:
                 scaler = pickle.load(f)
@@ -42,14 +52,15 @@ class MLPredictionService:
             return scaler
         return None
 
-    def load_model(self, model_name: str, mode: str = "optimized"):
-        model_key = f"{model_name}_{mode}"
+    def load_model(self, model_name: str, mode: str = "optimized", dataset: str = 'current'):
+        dataset = self._normalize_dataset(dataset)
+        model_key = f"{model_name}_{mode}_{dataset}"
 
         if model_key in self.models:
             logger.debug(f"   📦 Model cached: {model_key}")
             return self.models[model_key]
 
-        model_file = self._get_model_filename(model_name, mode)
+        model_file = self._get_model_filename(model_name, mode, dataset)
         model_path = self.models_dir / model_name / model_file
         logger.info(f"   📥 Loading model: {model_path}")
 
@@ -60,17 +71,17 @@ class MLPredictionService:
         with open(model_path, 'rb') as f:
             loaded_data = pickle.load(f)
 
-        model_data = self._normalize_model_data(loaded_data, model_name, mode)
+        model_data = self._normalize_model_data(loaded_data, model_name, mode, dataset)
         self.models[model_key] = model_data
         logger.info(f"   ✅ Model loaded: {model_key} ({len(model_data.get('feature_names', []))} features)")
         return model_data
 
-    def _normalize_model_data(self, loaded_data, model_name: str, mode: str) -> Dict[str, Any]:
+    def _normalize_model_data(self, loaded_data, model_name: str, mode: str, dataset: str = 'current') -> Dict[str, Any]:
         if isinstance(loaded_data, dict) and 'model' in loaded_data:
             return loaded_data
 
-        scaler = self._load_scaler(model_name, mode)
-        feature_names = self._get_feature_names_from_scaler_or_model(scaler, loaded_data, model_name, mode)
+        scaler = self._load_scaler(model_name, mode, dataset)
+        feature_names = self._get_feature_names_from_scaler_or_model(scaler, loaded_data, mode)
 
         return {
             'model': loaded_data,
@@ -78,7 +89,7 @@ class MLPredictionService:
             'feature_names': feature_names
         }
 
-    def _get_feature_names_from_scaler_or_model(self, scaler, model, model_name: str, mode: str) -> List[str]:
+    def _get_feature_names_from_scaler_or_model(self, scaler, model, mode: str) -> List[str]:
         if scaler is not None and hasattr(scaler, 'feature_names_in_'):
             return list(scaler.feature_names_in_)
         if hasattr(model, 'feature_names_in_'):
@@ -118,9 +129,11 @@ class MLPredictionService:
         features: Dict[str, float],
         model_name: str,
         mode: str = "optimized",
+        dataset: str = 'current',
         include_similar: bool = True
     ) -> Dict[str, Any]:
-        model_data = self.load_model(model_name, mode)
+        dataset = self._normalize_dataset(dataset)
+        model_data = self.load_model(model_name, mode, dataset)
         model = model_data['model']
         feature_names = model_data['feature_names']
         scaler = model_data.get('scaler')
@@ -138,6 +151,7 @@ class MLPredictionService:
         result = self._build_prediction_result(
             model_name, mode, prediction, prediction_proba, len(feature_names)
         )
+        result['dataset'] = dataset
 
         if model_name == 'random_forest':
             result.update(
@@ -146,7 +160,7 @@ class MLPredictionService:
 
         if include_similar:
             similar_samples = self.similar_sample_finder.find_similar_samples(
-                features, mode, top_k=3
+                features, mode, dataset, top_k=3
             )
             result['similar_samples'] = similar_samples
 
@@ -219,15 +233,17 @@ class MLPredictionService:
         self,
         features: Dict[str, float],
         model_names: List[str],
-        mode: str = "optimized"
+        mode: str = "optimized",
+        dataset: str = 'current'
     ) -> List[Dict[str, Any]]:
+        dataset = self._normalize_dataset(dataset)
         results = []
         similar_samples = None
 
         for i, model_name in enumerate(model_names):
             try:
                 include_similar = (i == 0)
-                result = self.predict_url(features, model_name, mode, include_similar)
+                result = self.predict_url(features, model_name, mode, dataset, include_similar)
 
                 if include_similar and 'similar_samples' in result:
                     similar_samples = result.pop('similar_samples')
@@ -237,6 +253,7 @@ class MLPredictionService:
                 results.append({
                     'model': model_name,
                     'mode': mode,
+                    'dataset': dataset,
                     'error': str(e),
                     'success': False
                 })
@@ -261,9 +278,11 @@ class MLPredictionService:
         self,
         features: Dict[str, float],
         model_names: List[str],
-        mode: str = "optimized"
+        mode: str = "optimized",
+        dataset: str = 'current'
     ) -> Dict[str, Any]:
-        predictions, similar_samples = self.predict_multiple_models(features, model_names, mode)
+        dataset = self._normalize_dataset(dataset)
+        predictions, similar_samples = self.predict_multiple_models(features, model_names, mode, dataset)
         successful = self._filter_successful_predictions(predictions)
 
         if not successful:
@@ -276,6 +295,7 @@ class MLPredictionService:
         result = {
             'ensemble_prediction': int(ensemble_pred),
             'ensemble_label': 'Phishing' if ensemble_pred == 1 else 'Safe',
+            'dataset': dataset,
             'models_voting': votes,
             'average_phishing_probability': float(avg_prob),
             'confidence': float(max(votes['phishing'], votes['safe']) / votes['total']),
