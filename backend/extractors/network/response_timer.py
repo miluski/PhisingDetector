@@ -1,3 +1,5 @@
+"""HTTP response-time and redirect-count extraction."""
+
 import time
 import requests
 import logging
@@ -8,19 +10,26 @@ logger = logging.getLogger("ResponseTimer")
 
 
 class ResponseTimer:
+    """Measure HTTP response time using one reusable requests session."""
 
     def __init__(self, timeout: int = 10):
+        """Initialize a session with the configured request timeout."""
         self.timeout = timeout
         self.session = self._create_session()
 
     def _create_session(self):
         session = requests.Session()
         session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': (
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                'Chrome/120.0.0.0 Safari/537.36'
+            )
         })
         return session
 
     def measure(self, url: str) -> tuple:
+        """Return elapsed seconds and redirect count, or ``(-1, -1)``."""
         try:
             start = time.time()
             response = self.session.get(url, timeout=self.timeout, allow_redirects=True, verify=False)

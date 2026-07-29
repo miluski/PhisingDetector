@@ -1,64 +1,43 @@
-"""Generate test datasets for URL corpus data under ../data/url_corpus/test.
+"""Export predefined URL corpus test datasets.
 
-Uses same logic as utils/generate_test_datasets.py, but for
-../data/url_corpus/dataset_full.csv and ../data/url_corpus/dataset_optimized.csv.
+This script intentionally does not sample from a single CSV and does not create
+synthetic records. URL corpus evaluation must use the already separated
+train/val/test files generated under data/url_corpus/quality_v4_repaired_features.
 
-Run from backend/:
-  ../.venv/bin/python scripts/generate_url_corpus_test_datasets.py
+Run from repository root:
+  ./.venv/bin/python backend/scripts/generate_url_corpus_test_datasets.py
 """
 
-import os
-import sys
+from __future__ import annotations
+
 from pathlib import Path
+import sys
 
-# Make backend root importable when script executed from backend/
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BACKEND_DIR))
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
-from utils.generate_test_datasets import (  # noqa: E402
-    compare_datasets,
-    generate_test_dataset,
-)
+from utils.split_dataset_loader import load_split_frames
 
 
-def main():
-    data_dir = BACKEND_DIR / "data" / "url_corpus"
-    test_dir = data_dir / "test"
+def main() -> None:
+    """Export the predefined URL-corpus test split."""
+    split_dir = BACKEND_DIR / "data" / "url_corpus" / "quality_v4_repaired_features"
+    output_dir = BACKEND_DIR / "data" / "url_corpus" / "test"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    full_csv = data_dir / "dataset_full.csv"
-    optimized_csv = data_dir / "dataset_optimized.csv"
+    frames = load_split_frames(split_dir, "dataset_full")
+    test_df = frames["test"]
+    output_path = output_dir / "test_dataset_full.csv"
+    test_df.to_csv(output_path, index=False)
 
-    os.makedirs(test_dir, exist_ok=True)
-
-    test_full_csv = test_dir / "test_dataset_full.csv"
-    test_optimized_csv = test_dir / "test_dataset_optimized.csv"
-
-    if not full_csv.exists():
-        print(f"Błąd: Nie znaleziono pliku {full_csv}")
-        return
-
-    if not optimized_csv.exists():
-        print(f"Błąd: Nie znaleziono pliku {optimized_csv}")
-        return
-
-    test_full_df, original_full_df = generate_test_dataset(
-        str(full_csv),
-        str(test_full_csv),
-        "URL corpus - Pełny zbiór danych (111 cech)",
-    )
-
-    test_optimized_df, original_optimized_df = generate_test_dataset(
-        str(optimized_csv),
-        str(test_optimized_csv),
-        "URL corpus - Zoptymalizowany zbiór danych (74 cechy)",
-    )
-
-    compare_datasets(test_full_df, original_full_df, "URL corpus - Pełny zbiór danych")
-    compare_datasets(test_optimized_df, original_optimized_df, "URL corpus - Zoptymalizowany zbiór danych")
-
-    print("\n✅ Generowanie test datasetów URL corpus zakończone.")
-    print(f"   Full test: {test_full_csv}")
-    print(f"   Optimized test: {test_optimized_csv}")
+    counts = test_df["phishing"].value_counts().to_dict()
+    print("✅ Exported predefined URL corpus test split.")
+    print(f"   Source split dir: {split_dir}")
+    print(f"   Output: {output_path}")
+    print(f"   Rows: {len(test_df):,}")
+    print(f"   Safe: {counts.get(0, 0):,}")
+    print(f"   Phishing: {counts.get(1, 0):,}")
 
 
 if __name__ == "__main__":

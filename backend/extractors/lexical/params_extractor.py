@@ -1,3 +1,5 @@
+"""Extraction of query-parameter lexical features."""
+
 from typing import Dict
 from urllib.parse import parse_qs
 from .character_counter import CharacterCounter
@@ -5,12 +7,15 @@ from .tld_counter import TLDCounter
 
 
 class ParamsExtractor:
+    """Extract punctuation, parameter count and optional TLD features."""
 
     def __init__(self):
+        """Initialize character and TLD counters."""
         self.char_counter = CharacterCounter()
         self.tld_counter = TLDCounter()
 
     def extract_features(self, params: str, char_names: list, include_tld: bool = False) -> Dict[str, int]:
+        """Return canonical query-parameter feature names and values."""
         features = self.char_counter.count_all(params, char_names)
         features['params_length'] = len(params)
         features['qty_params'] = len(parse_qs(params)) if params else 0

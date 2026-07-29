@@ -13,5 +13,3 @@ from config.server_runner import ServerRunner
 if __name__ == '__main__':
     runner = ServerRunner(flask_app)
     runner.run()
-
-

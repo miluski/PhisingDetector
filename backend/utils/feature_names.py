@@ -103,7 +103,6 @@ FEATURE_NAMES = {
 
     'time_response': 'DNS: Czas odpowiedzi',
     'domain_spf': 'DNS: Czy ma SPF',
-    'asn_ip': 'IP: Numer ASN',
     'time_domain_activation': 'Domena: Dni od aktywacji',
     'time_domain_expiration': 'Domena: Dni do wygaśnięcia',
     'qty_ip_resolved': 'DNS: Liczba rozwiązanych IP',
@@ -112,6 +111,11 @@ FEATURE_NAMES = {
     'ttl_hostname': 'DNS: TTL hostname',
     'tls_ssl_certificate': 'SSL: Czy ma ważny certyfikat',
     'qty_redirects': 'HTTP: Liczba przekierowań',
+    'missing_dns': 'Brak danych DNS',
+    'missing_whois': 'Brak danych WHOIS',
+    'missing_ssl': 'Brak danych SSL',
+    'missing_ttl': 'Brak danych TTL',
+    'missing_http': 'Brak danych HTTP',
     'url_google_index': 'Google: Czy URL zaindeksowany',
     'domain_google_index': 'Google: Czy domena zaindeksowana',
     'url_shortened': 'URL: Czy skrócony',
@@ -119,31 +123,176 @@ FEATURE_NAMES = {
     'phishing': 'Phishing (0=Bezpieczny, 1=Phishing)'
 }
 
+FEATURE_NAMES_EN = {
+    'qty_dot_url': 'URL: Number of "." characters',
+    'qty_hyphen_url': 'URL: Number of "-" characters',
+    'qty_underline_url': 'URL: Number of "_" characters',
+    'qty_slash_url': 'URL: Number of "/" characters',
+    'qty_questionmark_url': 'URL: Number of "?" characters',
+    'qty_equal_url': 'URL: Number of "=" characters',
+    'qty_at_url': 'URL: Number of "@" characters',
+    'qty_and_url': 'URL: Number of "&" characters',
+    'qty_exclamation_url': 'URL: Number of "!" characters',
+    'qty_space_url': 'URL: Number of space characters',
+    'qty_tilde_url': 'URL: Number of "~" characters',
+    'qty_comma_url': 'URL: Number of "," characters',
+    'qty_plus_url': 'URL: Number of "+" characters',
+    'qty_asterisk_url': 'URL: Number of "*" characters',
+    'qty_hashtag_url': 'URL: Number of "#" characters',
+    'qty_dollar_url': 'URL: Number of "$" characters',
+    'qty_percent_url': 'URL: Number of "%" characters',
+    'qty_tld_url': 'URL: Top-level domain length',
+    'length_url': 'URL: Total length',
+    'email_in_url': 'URL: Contains an email address',
+
+    'qty_dot_domain': 'Domain: Number of "." characters',
+    'qty_hyphen_domain': 'Domain: Number of "-" characters',
+    'qty_underline_domain': 'Domain: Number of "_" characters',
+    'qty_slash_domain': 'Domain: Number of "/" characters',
+    'qty_questionmark_domain': 'Domain: Number of "?" characters',
+    'qty_equal_domain': 'Domain: Number of "=" characters',
+    'qty_at_domain': 'Domain: Number of "@" characters',
+    'qty_and_domain': 'Domain: Number of "&" characters',
+    'qty_exclamation_domain': 'Domain: Number of "!" characters',
+    'qty_space_domain': 'Domain: Number of space characters',
+    'qty_tilde_domain': 'Domain: Number of "~" characters',
+    'qty_comma_domain': 'Domain: Number of "," characters',
+    'qty_plus_domain': 'Domain: Number of "+" characters',
+    'qty_asterisk_domain': 'Domain: Number of "*" characters',
+    'qty_hashtag_domain': 'Domain: Number of "#" characters',
+    'qty_dollar_domain': 'Domain: Number of "$" characters',
+    'qty_percent_domain': 'Domain: Number of "%" characters',
+    'qty_vowels_domain': 'Domain: Number of vowels',
+    'domain_length': 'Domain: Length',
+    'domain_in_ip': 'Domain: Is an IP address',
+    'server_client_domain': 'Domain: Contains "server" or "client"',
+
+    'qty_dot_directory': 'Path: Number of "." characters',
+    'qty_hyphen_directory': 'Path: Number of "-" characters',
+    'qty_underline_directory': 'Path: Number of "_" characters',
+    'qty_slash_directory': 'Path: Number of "/" characters',
+    'qty_questionmark_directory': 'Path: Number of "?" characters',
+    'qty_equal_directory': 'Path: Number of "=" characters',
+    'qty_at_directory': 'Path: Number of "@" characters',
+    'qty_and_directory': 'Path: Number of "&" characters',
+    'qty_exclamation_directory': 'Path: Number of "!" characters',
+    'qty_space_directory': 'Path: Number of space characters',
+    'qty_tilde_directory': 'Path: Number of "~" characters',
+    'qty_comma_directory': 'Path: Number of "," characters',
+    'qty_plus_directory': 'Path: Number of "+" characters',
+    'qty_asterisk_directory': 'Path: Number of "*" characters',
+    'qty_hashtag_directory': 'Path: Number of "#" characters',
+    'qty_dollar_directory': 'Path: Number of "$" characters',
+    'qty_percent_directory': 'Path: Number of "%" characters',
+    'directory_length': 'Path: Length',
+
+    'qty_dot_file': 'File name: Number of "." characters',
+    'qty_hyphen_file': 'File name: Number of "-" characters',
+    'qty_underline_file': 'File name: Number of "_" characters',
+    'qty_slash_file': 'File name: Number of "/" characters',
+    'qty_questionmark_file': 'File name: Number of "?" characters',
+    'qty_equal_file': 'File name: Number of "=" characters',
+    'qty_at_file': 'File name: Number of "@" characters',
+    'qty_and_file': 'File name: Number of "&" characters',
+    'qty_exclamation_file': 'File name: Number of "!" characters',
+    'qty_space_file': 'File name: Number of space characters',
+    'qty_tilde_file': 'File name: Number of "~" characters',
+    'qty_comma_file': 'File name: Number of "," characters',
+    'qty_plus_file': 'File name: Number of "+" characters',
+    'qty_asterisk_file': 'File name: Number of "*" characters',
+    'qty_hashtag_file': 'File name: Number of "#" characters',
+    'qty_dollar_file': 'File name: Number of "$" characters',
+    'qty_percent_file': 'File name: Number of "%" characters',
+    'file_length': 'File name: Length',
+
+    'qty_dot_params': 'Query parameters: Number of "." characters',
+    'qty_hyphen_params': 'Query parameters: Number of "-" characters',
+    'qty_underline_params': 'Query parameters: Number of "_" characters',
+    'qty_slash_params': 'Query parameters: Number of "/" characters',
+    'qty_questionmark_params': 'Query parameters: Number of "?" characters',
+    'qty_equal_params': 'Query parameters: Number of "=" characters',
+    'qty_at_params': 'Query parameters: Number of "@" characters',
+    'qty_and_params': 'Query parameters: Number of "&" characters',
+    'qty_exclamation_params': 'Query parameters: Number of "!" characters',
+    'qty_space_params': 'Query parameters: Number of space characters',
+    'qty_tilde_params': 'Query parameters: Number of "~" characters',
+    'qty_comma_params': 'Query parameters: Number of "," characters',
+    'qty_plus_params': 'Query parameters: Number of "+" characters',
+    'qty_asterisk_params': 'Query parameters: Number of "*" characters',
+    'qty_hashtag_params': 'Query parameters: Number of "#" characters',
+    'qty_dollar_params': 'Query parameters: Number of "$" characters',
+    'qty_percent_params': 'Query parameters: Number of "%" characters',
+    'params_length': 'Query parameters: Total length',
+    'tld_present_params': 'Query parameters: Contains a top-level domain',
+    'qty_params': 'Query parameters: Number of parameters',
+
+    'time_response': 'DNS: Response time',
+    'domain_spf': 'DNS: Has an SPF record',
+    'time_domain_activation': 'Domain: Days since activation',
+    'time_domain_expiration': 'Domain: Days until expiration',
+    'qty_ip_resolved': 'DNS: Number of resolved IP addresses',
+    'qty_nameservers': 'DNS: Number of name servers',
+    'qty_mx_servers': 'DNS: Number of MX servers',
+    'ttl_hostname': 'DNS: Hostname TTL',
+    'tls_ssl_certificate': 'TLS/SSL: Has a valid certificate',
+    'qty_redirects': 'HTTP: Number of redirects',
+    'missing_dns': 'DNS data missing',
+    'missing_whois': 'WHOIS data missing',
+    'missing_ssl': 'TLS/SSL data missing',
+    'missing_ttl': 'TTL data missing',
+    'missing_http': 'HTTP data missing',
+    'url_google_index': 'Google: URL is indexed',
+    'domain_google_index': 'Google: Domain is indexed',
+    'url_shortened': 'URL: Is shortened',
+
+    'phishing': 'Phishing (0=non-phishing, 1=phishing)',
+}
+
+FEATURE_NAME_TRANSLATIONS = {
+    FEATURE_NAMES[name]: english_name
+    for name, english_name in FEATURE_NAMES_EN.items()
+}
+
 FEATURE_CATEGORIES = {
-    'URL Properties': [k for k in FEATURE_NAMES.keys() if k.startswith('qty_') and k.endswith('_url')] + ['qty_tld_url', 'length_url', 'email_in_url'],
-    'Domain Properties': [k for k in FEATURE_NAMES.keys() if k.endswith('_domain')] + ['domain_length'],
-    'Directory Properties': [k for k in FEATURE_NAMES.keys() if k.endswith('_directory')] + ['directory_length'],
-    'File Properties': [k for k in FEATURE_NAMES.keys() if k.endswith('_file')] + ['file_length'],
-    'Parameter Properties': [k for k in FEATURE_NAMES.keys() if k.endswith('_params')] + ['params_length', 'tld_present_params', 'qty_params'],
-    'External/DNS Properties': ['time_response', 'domain_spf', 'asn_ip', 'time_domain_activation', 'time_domain_expiration',
-                                'qty_ip_resolved', 'qty_nameservers', 'qty_mx_servers', 'ttl_hostname', 'tls_ssl_certificate',
-                                'qty_redirects', 'url_google_index', 'domain_google_index', 'url_shortened']
+    'URL Properties': ([k for k in FEATURE_NAMES if k.startswith('qty_') and k.endswith('_url')]
+                       + ['qty_tld_url', 'length_url', 'email_in_url']),
+    'Domain Properties': ([k for k in FEATURE_NAMES if k.endswith('_domain')]
+                          + ['domain_length']),
+    'Directory Properties': ([k for k in FEATURE_NAMES if k.endswith('_directory')]
+                             + ['directory_length']),
+    'File Properties': ([k for k in FEATURE_NAMES if k.endswith('_file')]
+                        + ['file_length']),
+    'Parameter Properties': ([k for k in FEATURE_NAMES if k.endswith('_params')]
+                             + ['params_length', 'tld_present_params', 'qty_params']),
+    'External/DNS Properties': [
+        'time_response', 'domain_spf', 'time_domain_activation', 'time_domain_expiration',
+        'qty_ip_resolved', 'qty_nameservers', 'qty_mx_servers', 'ttl_hostname',
+        'tls_ssl_certificate', 'qty_redirects', 'url_google_index', 'domain_google_index',
+        'url_shortened', 'missing_dns', 'missing_whois', 'missing_ssl', 'missing_ttl', 'missing_http'
+    ]
 }
 
 
-def get_readable_name(feature_name):
-    return FEATURE_NAMES.get(feature_name, feature_name)
+def get_readable_name(feature_name, language='pl'):
+    """Return a localized display label for a canonical feature name."""
+    names = FEATURE_NAMES if language == 'pl' else FEATURE_NAMES_EN
+    return names.get(feature_name, feature_name)
 
 
 def get_feature_category(feature_name):
+    """Return the display category containing a feature name."""
     for category, features in FEATURE_CATEGORIES.items():
         if feature_name in features:
             return category
     return 'Other'
 
 
-def rename_features(df, inplace=False):
-    rename_dict = {col: get_readable_name(col) for col in df.columns if col in FEATURE_NAMES}
+def rename_features(df, inplace=False, language='pl'):
+    """Rename known feature columns for presentation or return a copy."""
+    rename_dict = {
+        col: get_readable_name(col, language)
+        for col in df.columns if col in FEATURE_NAMES
+    }
     if inplace:
         df.rename(columns=rename_dict, inplace=True)
         return df

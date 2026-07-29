@@ -1,11 +1,13 @@
+"""Central logging configuration for backend services."""
+
 import logging
 import sys
 
 from config.colored_formatter import ColoredFormatter
-from config.operation_logger import OperationLogger
 
 
 def setup_logging(level: str = "INFO") -> logging.Logger:
+    """Configure the root logger with the project console formatter."""
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
@@ -28,6 +30,7 @@ def _create_console_handler() -> logging.StreamHandler:
 
 
 def get_logger(name: str) -> logging.Logger:
+    """Return a named logger configured by the application root logger."""
     return logging.getLogger(name)
 
 

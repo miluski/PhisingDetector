@@ -1,5 +1,61 @@
 export type DatasetType = 'current' | 'url_corpus';
 
+export type AnalysisMode = 'optimized' | 'full';
+export type AnalysisType = 'email' | 'sms';
+
+export type ModelId =
+  | 'random_forest'
+  | 'xgboost'
+  | 'mlp'
+  | 'svm'
+  | 'logistic_regression';
+
+/** Number of input features in each dataset's published feature schema. */
+export const DATASET_FEATURE_COUNTS: Record<DatasetType, Record<AnalysisMode, number>> = {
+  current: {
+    optimized: 74,
+    full: 111,
+  },
+  url_corpus: {
+    optimized: 38,
+    full: 104,
+  },
+};
+
+export type ModelTestAccuracy = Record<
+  DatasetType,
+  Record<AnalysisMode, Partial<Record<ModelId, number>>>
+>;
+
+export interface ModelAccuracyResponse {
+  success: boolean;
+  accuracies: ModelTestAccuracy;
+}
+
+export interface EmailExample {
+  sender: string;
+  recipient: string;
+  subject?: string;
+  body: string;
+  contains_phishing_url: boolean;
+}
+
+export interface SmsExample {
+  body: string;
+  contains_phishing_url: boolean;
+}
+
+export interface MessageExamplesResponse {
+  success: boolean;
+  emails: EmailExample[];
+  sms: SmsExample[];
+}
+
+export const EMPTY_MODEL_TEST_ACCURACY: ModelTestAccuracy = {
+  current: { full: {}, optimized: {} },
+  url_corpus: { full: {}, optimized: {} },
+};
+
 export interface PhishingAnalysisResponse {
   success: boolean;
   is_phishing: boolean;
@@ -22,6 +78,10 @@ export interface UrlAnalysis {
   visualizations?: Visualizations;
   similar_samples?: SimilarSample[];
   is_phishing: boolean;
+  raw_is_phishing?: boolean;
+  receiver_domain?: boolean;
+  source?: string;
+  classification_note?: string;
 }
 
 export interface SimilarSample {
@@ -85,19 +145,39 @@ export interface Visualizations {
   };
 }
 
-export const AVAILABLE_MODELS = [
-  { id: 'random_forest', name: 'Random Forest', description: 'Bagging zespołowy (96% dokładność)' },
-  { id: 'xgboost', name: 'XGBoost', description: 'Gradient boosting (97% dokładność)' },
-  { id: 'mlp', name: 'MLP', description: 'Sieć neuronowa (95% dokładność)' },
-  { id: 'svm', name: 'SVM', description: 'Oparty na jądrze (94% dokładność)' },
+export interface ModelOption {
+  readonly id: ModelId;
+  readonly name: string;
+  readonly description: string;
+}
+
+export interface DatasetOption {
+  readonly id: DatasetType;
+  readonly name: string;
+  readonly description: string;
+}
+
+export const AVAILABLE_MODELS: readonly ModelOption[] = [
+  { id: 'random_forest', name: 'Random Forest', description: 'Bagging zespołowy' },
+  { id: 'xgboost', name: 'XGBoost', description: 'Gradient boosting' },
+  { id: 'mlp', name: 'MLP', description: 'Sieć neuronowa' },
+  { id: 'svm', name: 'SVM', description: 'Model oparty na jądrze' },
   {
     id: 'logistic_regression',
     name: 'Regresja logistyczna',
-    description: 'Model liniowy (92% dokładność)',
+    description: 'Model liniowy',
   },
 ];
 
-export const AVAILABLE_DATASETS = [
-  { id: 'current', name: 'Obecny zbiór', description: 'Aktualny zbiór bazowy projektu' },
-  { id: 'url_corpus', name: 'URL corpus', description: 'Nowy zbiór z feedów phishing + Tranco' },
+export const AVAILABLE_DATASETS: readonly DatasetOption[] = [
+  {
+    id: 'current',
+    name: 'Zbiór bazowy (Grabarica)',
+    description: 'Oryginalny zbiór danych Grabarica',
+  },
+  {
+    id: 'url_corpus',
+    name: 'Rozszerzony zbiór adresów URL',
+    description: 'Phishingowe feedy oraz bezpieczne domeny z rankingu Tranco',
+  },
 ];

@@ -1,13 +1,17 @@
-import pandas as pd
-import numpy as np
+"""Generate balanced real and synthetic datasets used by smoke tests."""
+
 import os
 
+import pandas as pd
+
 def print_generation_header(dataset_name):
+    """Print the heading for one dataset generation run."""
     print(f"\n{'='*100}")
     print(f"GENEROWANIE ZBIORU TESTOWEGO - {dataset_name.upper()}")
     print(f"{'='*100}\n")
 
 def sample_real_examples(df):
+    """Return a deterministic balanced sample of real records."""
     phishing_records = df[df['phishing'] == 1]
     legitimate_records = df[df['phishing'] == 0]
 
@@ -20,10 +24,11 @@ def sample_real_examples(df):
     real_examples = pd.concat([sample_phishing, sample_legitimate], ignore_index=True)
     real_examples = real_examples.sample(frac=1, random_state=42).reset_index(drop=True)
 
-    print(f"\n✓ Wybrano 20,000 prawdziwych przykładów (10,000 phishing + 10,000 bezpiecznych)")
+    print("\n✓ Wybrano 20,000 prawdziwych przykładów (10,000 phishing + 10,000 bezpiecznych)")
     return real_examples
 
 def calculate_synthetic_value(col, val1, val2):
+    """Average two feature values while preserving labels and missing values."""
     if col == 'phishing':
         return int(val1)
 
@@ -37,57 +42,49 @@ def calculate_synthetic_value(col, val1, val2):
     return round(avg_val, 6)
 
 def create_synthetic_record(record1, record2, columns):
+    """Create one synthetic row from two records."""
     synthetic_record = {}
     for col in columns:
         synthetic_record[col] = calculate_synthetic_value(col, record1[col], record2[col])
     return synthetic_record
 
+def _sample_class(df, label):
+    """Shuffle one class deterministically for pair generation."""
+    rows = df[df["phishing"] == label]
+    return rows.sample(frac=1, random_state=42).reset_index(drop=True)
+
+
+def _synthetic_class_records(rows, columns, count=10000):
+    """Generate averaged records for one label, cycling short classes."""
+    if rows.empty:
+        raise ValueError("Nie można generować rekordów dla pustej klasy")
+    records = []
+    for index in range(count):
+        first = rows.iloc[(index * 2) % len(rows)]
+        second = rows.iloc[(index * 2 + 1) % len(rows)]
+        records.append(create_synthetic_record(first, second, columns))
+    return records
+
+
 def generate_synthetic_records(df):
-    synthetic_records = []
-    phishing_records = df[df['phishing'] == 1]
-    legitimate_records = df[df['phishing'] == 0]
-
-    phishing_records = phishing_records.sample(frac=1, random_state=42).reset_index(drop=True)
-    legitimate_records = legitimate_records.sample(frac=1, random_state=42).reset_index(drop=True)
-
-    for i in range(10000):
-        idx1 = i * 2
-        idx2 = i * 2 + 1
-
-        if idx2 >= len(phishing_records):
-            idx1 = idx1 % len(phishing_records)
-            idx2 = idx2 % len(phishing_records)
-
-        record1 = phishing_records.iloc[idx1]
-        record2 = phishing_records.iloc[idx2]
-        synthetic_record = create_synthetic_record(record1, record2, df.columns)
-        synthetic_records.append(synthetic_record)
-
-    for i in range(10000):
-        idx1 = i * 2
-        idx2 = i * 2 + 1
-
-        if idx2 >= len(legitimate_records):
-            idx1 = idx1 % len(legitimate_records)
-            idx2 = idx2 % len(legitimate_records)
-
-        record1 = legitimate_records.iloc[idx1]
-        record2 = legitimate_records.iloc[idx2]
-        synthetic_record = create_synthetic_record(record1, record2, df.columns)
-        synthetic_records.append(synthetic_record)
-
-    return pd.DataFrame(synthetic_records)
+    """Generate 10,000 synthetic rows for each binary class."""
+    columns = df.columns
+    phishing = _synthetic_class_records(_sample_class(df, 1), columns)
+    legitimate = _synthetic_class_records(_sample_class(df, 0), columns)
+    return pd.DataFrame(phishing + legitimate)
 
 def ensure_integer_columns(df):
+    """Cast integer-like dataset columns back to integer dtype."""
     for col in df.columns:
         if col == 'phishing' or df[col].dtype in ['int64', 'int32']:
             df[col] = df[col].astype(int)
     return df
 
 def print_generation_summary(final_df, synthetic_df, output_csv):
+    """Print counts and class distribution for a generated dataset."""
     print(f"\n✅ Zapisano zbiór testowy do: {output_csv}")
     print(f"   Całkowita liczba rekordów: {len(final_df):,}")
-    print(f"   - Prawdziwe przykłady: 20,000 (10,000 phishing, 10,000 bezpiecznych)")
+    print("   - Prawdziwe przykłady: 20,000 (10,000 phishing, 10,000 bezpiecznych)")
     print(f"   - Syntetyczne rekordy: {len(synthetic_df):,}")
 
     phishing_count = final_df['phishing'].sum()
@@ -95,6 +92,7 @@ def print_generation_summary(final_df, synthetic_df, output_csv):
     print(f"   Rozkład etykiet: {phishing_count:,} phishing, {legitimate_count:,} bezpiecznych")
 
 def generate_test_dataset(input_csv, output_csv, dataset_name):
+    """Generate and persist one test dataset, returning it and its source."""
     print_generation_header(dataset_name)
 
     df = pd.read_csv(input_csv)
@@ -112,6 +110,7 @@ def generate_test_dataset(input_csv, output_csv, dataset_name):
     return final_df, df
 
 def print_statistics_comparison(original_df, test_df):
+    """Print row and class-count comparison between two datasets."""
     print(f"{'Statystyka':<40} {'Oryginalny zbiór':>25} {'Zbiór testowy':>25}")
     print(f"{'─'*100}")
     print(f"{'Liczba rekordów':<40} {len(original_df):>25,} {len(test_df):>25,}")
@@ -129,13 +128,15 @@ def print_statistics_comparison(original_df, test_df):
     print(f"{'% Phishing':<40} {orig_phishing_pct:>24.2f}% {test_phishing_pct:>24.2f}%")
 
 def get_sample_features(feature_columns):
+    """Select representative features available in a dataset."""
     sample_features = [
         'url_len', 'domain_len', 'qty_dot_url',
-        'qty_hyphen_url', 'qty_slash_url', 'asn_ip', 'time_response'
+        'qty_hyphen_url', 'qty_slash_url', 'time_response'
     ]
     return [f for f in sample_features if f in feature_columns]
 
 def compare_feature_ranges(original_df, test_df, available_features):
+    """Print source and generated ranges for representative features."""
     print(f"\n{'Cecha':<30} {'Oryg: Min':>12} {'Oryg: Max':>12} {'Test: Min':>12} {'Test: Max':>12} {'Zgodność':>10}")
     print(f"{'─'*100}")
 
@@ -153,6 +154,7 @@ def compare_feature_ranges(original_df, test_df, available_features):
         print(f"{feature:<30} {orig_min:>12.2f} {orig_max:>12.2f} {test_min:>12.2f} {test_max:>12.2f} {in_range:>10}")
 
 def compare_datasets(test_df, original_df, dataset_name):
+    """Print statistics and range checks for one generated dataset."""
     print(f"\n{'='*100}")
     print(f"PORÓWNANIE STATYSTYK - {dataset_name.upper()}")
     print(f"{'='*100}\n")
@@ -161,44 +163,40 @@ def compare_datasets(test_df, original_df, dataset_name):
     print_statistics_comparison(original_df, test_df)
 
     print(f"\n{'─'*100}")
-    print(f"PORÓWNANIE ZAKRESÓW WYBRANYCH CECH")
+    print("PORÓWNANIE ZAKRESÓW WYBRANYCH CECH")
     print(f"{'─'*100}")
 
     available_features = get_sample_features(feature_columns)
     compare_feature_ranges(original_df, test_df, available_features)
     print(f"{'─'*100}\n")
 
+def _dataset_paths(data_dir, name):
+    """Return source and destination paths for a named dataset."""
+    source = os.path.join(data_dir, f"dataset_{name}_balanced.csv")
+    target = os.path.join(data_dir, "test", f"test_dataset_{name}.csv")
+    return source, target
+
+
+def _generate_named_dataset(data_dir, name, title):
+    """Generate one named dataset when its source exists."""
+    source, target = _dataset_paths(data_dir, name)
+    if not os.path.exists(source):
+        print(f"Błąd: Nie znaleziono pliku {source}")
+        return None
+    return generate_test_dataset(source, target, title)
+
+
 def main():
+    """Generate both configured datasets and print comparisons."""
     data_dir = "../data"
     test_dir = os.path.join(data_dir, "test")
-
-    full_csv = os.path.join(data_dir, "dataset_full.csv")
-    optimized_csv = os.path.join(data_dir, "dataset_optimized.csv")
-
     os.makedirs(test_dir, exist_ok=True)
-
-    test_full_csv = os.path.join(test_dir, "test_dataset_full.csv")
-    test_optimized_csv = os.path.join(test_dir, "test_dataset_optimized.csv")
-
-    if not os.path.exists(full_csv):
-        print(f"Błąd: Nie znaleziono pliku {full_csv}")
-        return
-
-    if not os.path.exists(optimized_csv):
-        print(f"Błąd: Nie znaleziono pliku {optimized_csv}")
-        return
-
-    test_full_df, original_full_df = generate_test_dataset(
-        full_csv, test_full_csv, "Pełny zbiór danych (111 cech)"
-    )
-
-    test_optimized_df, original_optimized_df = generate_test_dataset(
-        optimized_csv, test_optimized_csv, "Zoptymalizowany zbiór danych (73 cechy)"
-    )
-
-    compare_datasets(test_full_df, original_full_df, "Pełny zbiór danych (111 cech)")
-
-    compare_datasets(test_optimized_df, original_optimized_df, "Zoptymalizowany zbiór danych (73 cechy)")
+    full = _generate_named_dataset(data_dir, "full", "Pełny zbiór danych (111 cech)")
+    optimized = _generate_named_dataset(data_dir, "optimized", "Zoptymalizowany zbiór danych (73 cechy)")
+    if full:
+        compare_datasets(full[0], full[1], "Pełny zbiór danych (111 cech)")
+    if optimized:
+        compare_datasets(optimized[0], optimized[1], "Zoptymalizowany zbiór danych (73 cechy)")
 
     print(f"\n{'='*100}")
     print("✅ GENEROWANIE ZAKOŃCZONE POMYŚLNIE!")

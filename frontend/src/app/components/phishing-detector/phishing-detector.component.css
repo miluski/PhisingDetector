@@ -1,8 +1,10 @@
 .container {
   max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden;
 }
 
 .header {
@@ -71,6 +73,7 @@
   padding: 30px;
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-width: 0;
 }
 
 .input-panel h2,
@@ -95,6 +98,8 @@
 .input-field,
 .textarea-field {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 12px;
   border: 2px solid #e0e0e0;
   border-radius: 6px;
@@ -111,6 +116,16 @@
 .textarea-field {
   resize: vertical;
   font-family: monospace;
+}
+
+.example-button {
+  margin-top: 10px;
+}
+
+.example-status {
+  margin: 8px 0 0;
+  color: #555;
+  font-size: 0.9rem;
 }
 
 .file-input {
@@ -137,17 +152,27 @@
 }
 
 .radio-label {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   margin: 10px 0;
   cursor: pointer;
+  min-width: 0;
 }
 
 .radio-label input {
-  margin-right: 8px;
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+}
+
+.radio-label span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .model-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 15px;
 }
@@ -166,6 +191,11 @@
   background: #5568d3;
 }
 
+.select-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .model-list {
   display: flex;
   flex-direction: column;
@@ -181,6 +211,7 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s;
+  min-width: 0;
 }
 
 .model-checkbox:hover {
@@ -195,6 +226,8 @@
 .model-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .model-info strong {
@@ -208,6 +241,7 @@
 
 .action-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   margin-top: 20px;
 }
@@ -281,6 +315,7 @@
   font-size: 2rem;
   font-weight: bold;
   color: white;
+  overflow-wrap: anywhere;
 }
 
 .summary-card {
@@ -297,7 +332,7 @@
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 15px;
   margin-bottom: 15px;
 }
@@ -316,6 +351,7 @@
   font-size: 1.3rem;
   font-weight: bold;
   color: #667eea;
+  overflow-wrap: anywhere;
 }
 
 .urls-list {
@@ -333,6 +369,7 @@
   margin: 5px 0;
   border-radius: 4px;
   word-break: break-all;
+  overflow-wrap: anywhere;
   font-family: monospace;
 }
 
@@ -341,11 +378,14 @@
   padding: 25px;
   background: #f5f5f5;
   border-radius: 12px;
+  min-width: 0;
+  overflow: hidden;
   border-left: 5px solid #667eea;
 }
 
 .url-header {
   margin-bottom: 20px;
+  min-width: 0;
 }
 
 .url-number {
@@ -359,9 +399,24 @@
   margin-bottom: 8px;
 }
 
+.context-badge {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 0 8px 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #e8eefc;
+  color: #415a9b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .url-analysis h3 {
   color: #333;
-  word-break: break-all;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
   margin: 8px 0 0 0;
   font-size: 1rem;
   background: white;
@@ -415,6 +470,7 @@
 
 .voting-summary {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   justify-content: center;
 }
@@ -423,6 +479,7 @@
   padding: 10px 20px;
   border-radius: 6px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .vote-item.phishing {
@@ -449,6 +506,8 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 2px solid #e0e0e0;
   transition: all 0.3s;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .prediction-card:hover {
@@ -458,20 +517,24 @@
 
 .model-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
   margin-bottom: 12px;
+  min-width: 0;
 }
 
 .prediction-card h5 {
   margin: 0;
   color: #667eea;
   font-size: 1.1rem;
+  overflow-wrap: anywhere;
 }
 
 .model-id {
   color: #999;
   font-size: 0.8rem;
+  overflow-wrap: anywhere;
 }
 
 .section-title {
@@ -545,6 +608,7 @@
 
 .confidence-section {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   margin: 15px 0;
@@ -564,6 +628,7 @@
 
 .confidence-section .confidence-bar {
   flex: 1;
+  min-width: 120px;
 }
 
 .confidence-bar {
@@ -634,8 +699,8 @@
 }
 
 .charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
@@ -644,6 +709,8 @@
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .chart-card h5 {
@@ -657,6 +724,21 @@
   border-radius: 6px;
 }
 
+.download-button {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #5568d3;
+  color: white;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.download-button:hover {
+  background: #4354b5;
+}
+
 .similar-samples-section {
   margin-top: 30px;
   padding: 20px;
@@ -666,7 +748,7 @@
 
 .similar-samples-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 15px;
   margin-top: 15px;
 }
@@ -677,6 +759,8 @@
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border-left: 4px solid #ccc;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .similar-sample-card.phishing {
@@ -689,8 +773,10 @@
 
 .sample-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 10px;
 }
 
@@ -714,6 +800,7 @@
 .sample-distance {
   font-size: 0.8rem;
   color: #666;
+  overflow-wrap: anywhere;
 }
 
 .sample-index {
@@ -747,4 +834,62 @@
   border-radius: 4px;
   font-size: 0.75rem;
   color: #555;
+  overflow-wrap: anywhere;
+}
+
+.features-section {
+  min-width: 0;
+}
+
+.features-table-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.features-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.features-table th,
+.features-table td {
+  padding: 8px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.features-table th:first-child,
+.features-table td:first-child {
+  width: 70%;
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 12px;
+  }
+
+  .input-panel,
+  .results-panel {
+    padding: 18px;
+  }
+
+  .header h1 {
+    font-size: 1.8rem;
+  }
+
+  .analysis-type-selector,
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .type-button,
+  .analyze-button,
+  .reset-button {
+    width: 100%;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }

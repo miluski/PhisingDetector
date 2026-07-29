@@ -1,6 +1,0 @@
-Faza,Model,Zbior,Rozklad,Dokladnosc,Precyzja,Czulosc,F1,ROC-AUC,Bledne
-Faza 1: Mini Test,Regresja Logistyczna,Pelny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,1.0,0
-Faza 1: Mini Test,Random Forest,Pelny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,1.0,0
-Faza 1: Mini Test,XGBoost,Pelny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,1.0,0
-Faza 1: Mini Test,SVM,Pelny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,1.0,0
-Faza 1: Mini Test,MLP,Pelny (111),"50% phishing, 50% bezpieczne",1.0,1.0,1.0,1.0,1.0,0

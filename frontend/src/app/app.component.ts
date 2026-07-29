@@ -10,5 +10,5 @@ import { PhishingDetectorComponent } from './components/phishing-detector/phishi
   styleUrl: './app.component.css',
 })
 export class AppComponent {
-  title = 'PhishingDetector';
+  readonly title = 'PhishingDetector';
 }

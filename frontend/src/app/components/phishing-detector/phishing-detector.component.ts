@@ -1,10 +1,18 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   AVAILABLE_DATASETS,
   AVAILABLE_MODELS,
+  DATASET_FEATURE_COUNTS,
+  EMPTY_MODEL_TEST_ACCURACY,
+  EmailExample,
+  AnalysisMode,
+  AnalysisType,
   DatasetType,
+  ModelId,
+  MessageExamplesResponse,
   PhishingAnalysisResponse,
 } from '../../models/phishing-analysis.model';
 import { PhishingDetectionService } from '../../services/phishing-detection.service';
@@ -17,23 +25,60 @@ import { PhishingDetectionService } from '../../services/phishing-detection.serv
   styleUrls: ['./phishing-detector.component.css'],
 })
 export class PhishingDetectorComponent {
-  public analysisType: 'email' | 'sms' = 'email';
+  public analysisType: AnalysisType = 'email';
   public sender = '';
   public receiver = '';
   public content = '';
   public attachments: File[] = [];
-  public mode: 'optimized' | 'full' = 'optimized';
+  public mode: AnalysisMode = 'optimized';
   public dataset: DatasetType = 'current';
-  public availableModels = AVAILABLE_MODELS;
-  public availableDatasets = AVAILABLE_DATASETS;
-  public selectedModels: string[] = ['random_forest'];
+  public readonly availableModels = AVAILABLE_MODELS;
+  public readonly availableDatasets = AVAILABLE_DATASETS;
+  public readonly datasetFeatureCounts = DATASET_FEATURE_COUNTS;
+  public modelTestAccuracy = EMPTY_MODEL_TEST_ACCURACY;
+  public isLoadingAccuracies = true;
+  public messageExamples: MessageExamplesResponse = {
+    success: false,
+    emails: [],
+    sms: [],
+  };
+  public isLoadingExamples = true;
+  public selectedExampleIsPhishing: boolean | null = null;
+  public selectedModels: ModelId[] = ['random_forest'];
   public isAnalyzing = false;
   public result: PhishingAnalysisResponse | null = null;
   public error: string | null = null;
 
-  constructor(private readonly phishingService: PhishingDetectionService) {}
+  constructor(private readonly phishingService: PhishingDetectionService) {
+    this.loadModelAccuracies();
+    this.loadMessageExamples();
+  }
 
-  public toggleModel(modelId: string): void {
+  private loadModelAccuracies(): void {
+    this.phishingService.getModelAccuracies().subscribe({
+      next: (response) => {
+        this.modelTestAccuracy = response.accuracies;
+        this.isLoadingAccuracies = false;
+      },
+      error: () => {
+        this.isLoadingAccuracies = false;
+      },
+    });
+  }
+
+  private loadMessageExamples(): void {
+    this.phishingService.getMessageExamples().subscribe({
+      next: (response) => {
+        this.messageExamples = response;
+        this.isLoadingExamples = false;
+      },
+      error: () => {
+        this.isLoadingExamples = false;
+      },
+    });
+  }
+
+  public toggleModel(modelId: ModelId): void {
     const index = this.selectedModels.indexOf(modelId);
     if (index > -1) {
       this.selectedModels.splice(index, 1);
@@ -51,10 +96,9 @@ export class PhishingDetectorComponent {
   }
 
   public onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files) {
-      this.attachments = Array.from(input.files);
-    }
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.files === null) return;
+    this.attachments = Array.from(input.files);
   }
 
   public analyze(): void {
@@ -96,7 +140,9 @@ export class PhishingDetectorComponent {
       .analyzeSms(this.content, this.selectedModels, this.mode, this.dataset)
       .subscribe({
         next: (response) => this.handleAnalysisSuccess(response),
-        error: (err) => this.handleAnalysisError(err.error?.error || 'Analysis failed'),
+        error: (error: unknown) => this.handleAnalysisError(
+          this.extractErrorMessage(error, 'Analiza nie powiodła się'),
+        ),
       });
   }
 
@@ -105,7 +151,9 @@ export class PhishingDetectorComponent {
 
     this.phishingService.analyzeEmail(formData).subscribe({
       next: (response) => this.handleAnalysisSuccess(response),
-      error: (err) => this.handleAnalysisError(err.error?.error || 'Analiza nie powiodła się'),
+      error: (error: unknown) => this.handleAnalysisError(
+        this.extractErrorMessage(error, 'Analiza nie powiodła się'),
+      ),
     });
   }
 
@@ -142,6 +190,7 @@ export class PhishingDetectorComponent {
     this.attachments = [];
     this.result = null;
     this.error = null;
+    this.selectedExampleIsPhishing = null;
   }
 
   public getThreatLevel(): string {
@@ -154,9 +203,55 @@ export class PhishingDetectorComponent {
     return this.result.is_phishing ? 'threat-high' : 'threat-safe';
   }
 
-  public getModelDisplayName(modelId: string): string {
+  public getModelDisplayName(modelId: ModelId | string): string {
     const model = this.availableModels.find((m) => m.id === modelId);
     return model ? model.name : modelId;
+  }
+
+  public getFeatureCount(mode: AnalysisMode = this.mode): number {
+    return this.datasetFeatureCounts[this.dataset][mode];
+  }
+
+  public getModelAccuracy(modelId: ModelId): string {
+    const accuracy = this.modelTestAccuracy[this.dataset][this.mode][modelId];
+    if (this.isLoadingAccuracies) return 'Wczytywanie...';
+    return accuracy === undefined ? 'Brak aktualnego wyniku' : `${(accuracy * 100).toFixed(2)}%`;
+  }
+
+  public insertExample(): void {
+    const examples = this.analysisType === 'email'
+      ? this.messageExamples.emails
+      : this.messageExamples.sms;
+    if (examples.length === 0) {
+      return;
+    }
+    const example = examples[Math.floor(Math.random() * examples.length)];
+    this.selectedExampleIsPhishing = example.contains_phishing_url;
+    if (this.analysisType === 'email') {
+      this.insertEmailExample(example as EmailExample);
+      return;
+    }
+    this.content = example.body;
+  }
+
+  public hasMessageExamples(): boolean {
+    const examples = this.analysisType === 'email'
+      ? this.messageExamples.emails
+      : this.messageExamples.sms;
+    return examples.length > 0;
+  }
+
+  public clearExampleStatus(): void {
+    this.selectedExampleIsPhishing = null;
+  }
+
+  private insertEmailExample(example: EmailExample): void {
+    this.sender = example.sender;
+    this.receiver = example.recipient;
+    this.content = [
+      example.subject ? `Temat: ${example.subject}` : '',
+      example.body,
+    ].filter(Boolean).join('\n\n');
   }
 
   public getFeatureEntries(features: Record<string, number>): { name: string; value: number }[] {
@@ -164,9 +259,7 @@ export class PhishingDetectorComponent {
   }
 
   public getTopSampleFeatures(features: Record<string, number>): { name: string; value: number }[] {
-    return Object.entries(features)
-      .slice(0, 5)
-      .map(([name, value]) => ({ name, value }));
+    return this.getFeatureEntries(features).slice(0, 5);
   }
 
   public formatFeatureValue(value: number): string {
@@ -174,5 +267,17 @@ export class PhishingDetectorComponent {
       return String(value);
     }
     return Number.isInteger(value) ? value.toString() : value.toFixed(4);
+  }
+
+  private extractErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse && this.isErrorPayload(error.error)) {
+      return error.error.error;
+    }
+    return fallback;
+  }
+
+  private isErrorPayload(value: unknown): value is { error: string } {
+    return typeof value === 'object' && value !== null
+      && 'error' in value && typeof value.error === 'string';
   }
 }

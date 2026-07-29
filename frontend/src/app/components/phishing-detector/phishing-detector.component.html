@@ -1,7 +1,7 @@
 <div class="container">
   <header class="header">
     <h1>🛡️ PhishingDetector</h1>
-    <p class="subtitle">Zaawansowana detekcja phishingu w Email i SMS oparta na ML</p>
+    <p class="subtitle">Zaawansowana detekcja phishingu w wiadomościach e-mail i SMS z wykorzystaniem uczenia maszynowego</p>
   </header>
 
   <div class="analysis-type-selector">
@@ -10,7 +10,7 @@
       (click)="analysisType = 'email'; reset()"
       class="type-button"
     >
-      📧 Analiza Email
+      📧 Analiza wiadomości e-mail
     </button>
     <button
       [class.active]="analysisType === 'sms'"
@@ -23,25 +23,27 @@
 
   <div class="main-content">
     <div class="input-panel">
-      <h2>{{ analysisType === 'email' ? 'Szczegóły Email' : 'Treść SMS' }}</h2>
+      <h2>{{ analysisType === 'email' ? 'Szczegóły wiadomości e-mail' : 'Treść wiadomości SMS' }}</h2>
 
       <div class="form-group" *ngIf="analysisType === 'email'">
-        <label for="sender">Adres email nadawcy</label>
+        <label for="sender">Adres e-mail nadawcy</label>
         <input
           id="sender"
           type="email"
           [(ngModel)]="sender"
+          (ngModelChange)="clearExampleStatus()"
           placeholder="nadawca@example.com"
           class="input-field"
         />
       </div>
 
       <div class="form-group" *ngIf="analysisType === 'email'">
-        <label for="receiver">Adres email odbiorcy</label>
+        <label for="receiver">Adres e-mail odbiorcy</label>
         <input
           id="receiver"
           type="email"
           [(ngModel)]="receiver"
+          (ngModelChange)="clearExampleStatus()"
           placeholder="odbiorca@example.com"
           class="input-field"
         />
@@ -49,19 +51,32 @@
 
       <div class="form-group">
         <label for="content">{{
-          analysisType === 'email' ? 'Treść Email' : 'Wiadomość SMS'
+          analysisType === 'email' ? 'Treść wiadomości e-mail' : 'Treść wiadomości SMS'
         }}</label>
         <textarea
           id="content"
           [(ngModel)]="content"
+          (ngModelChange)="clearExampleStatus()"
           [placeholder]="
             analysisType === 'email'
-              ? 'Wklej treść emaila tutaj...'
+              ? 'Wklej treść wiadomości e-mail tutaj...'
               : 'Wklej wiadomość SMS tutaj...'
           "
           rows="8"
           class="textarea-field"
         ></textarea>
+        <button
+          type="button"
+          class="select-button example-button"
+          [disabled]="isLoadingExamples || !hasMessageExamples()"
+          (click)="insertExample()"
+        >
+          {{ isLoadingExamples ? 'Wczytywanie przykładów...' : 'Wstaw losowy przykład' }}
+        </button>
+        <p *ngIf="selectedExampleIsPhishing !== null" class="example-status">
+          Zawiera phishingowy adres URL:
+          <strong>{{ selectedExampleIsPhishing ? 'tak' : 'nie' }}</strong>
+        </p>
       </div>
 
       <div class="form-group" *ngIf="analysisType === 'email'">
@@ -82,25 +97,25 @@
       </div>
 
       <div class="form-group">
-        <p>Tryb analizy</p>
+        <p>Zbiór modeli i próbek</p>
         <div class="mode-selector">
-          <label class="radio-label">
-            <input type="radio" [(ngModel)]="mode" value="optimized" name="mode" />
-            <span>Zoptymalizowany (74 cechy, szybszy)</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" [(ngModel)]="mode" value="full" name="mode" />
-            <span>Pełny (111 cech, kompleksowy)</span>
+          <label class="radio-label" *ngFor="let ds of availableDatasets">
+            <input type="radio" [(ngModel)]="dataset" [value]="ds.id" name="dataset" />
+            <span>{{ ds.name }}: {{ ds.description }}</span>
           </label>
         </div>
       </div>
 
       <div class="form-group">
-        <p>Zbiór modeli i próbek</p>
+        <p>Tryb analizy</p>
         <div class="mode-selector">
-          <label class="radio-label" *ngFor="let ds of availableDatasets">
-            <input type="radio" [(ngModel)]="dataset" [value]="ds.id" name="dataset" />
-            <span>{{ ds.name }} ({{ ds.id }}) - {{ ds.description }}</span>
+          <label class="radio-label">
+            <input type="radio" [(ngModel)]="mode" value="optimized" name="mode" />
+            <span>Zoptymalizowany ({{ getFeatureCount('optimized') }} cech, szybszy)</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" [(ngModel)]="mode" value="full" name="mode" />
+            <span>Pełny ({{ getFeatureCount('full') }} cech, kompleksowy)</span>
           </label>
         </div>
       </div>
@@ -119,10 +134,11 @@
                 [checked]="selectedModels.includes(model.id)"
                 (change)="toggleModel(model.id)"
               />
-              <div class="model-info">
-                <strong>{{ model.name }}</strong>
-                <small>{{ model.description }}</small>
-              </div>
+                <div class="model-info">
+                  <strong>{{ model.name }}</strong>
+                  <small>{{ model.description }}</small>
+                  <small>Dokładność testowa: {{ getModelAccuracy(model.id) }}</small>
+                </div>
             </label>
           </div>
         </div>
@@ -182,6 +198,7 @@
       <div *ngFor="let urlAnalysis of result.analysis; let i = index" class="url-analysis">
         <div class="url-header">
           <span class="url-number">URL #{{ i + 1 }}</span>
+          <span *ngIf="urlAnalysis.receiver_domain" class="context-badge">Domena odbiorcy · analizowana</span>
           <h3>{{ urlAnalysis.url }}</h3>
         </div>
 
@@ -213,6 +230,7 @@
               <div class="model-header">
                 <h5>{{ getModelDisplayName(pred.model) }}</h5>
                 <span class="model-id">({{ pred.model }})</span>
+                <span class="model-id">{{ pred.features_used }} cech wejściowych</span>
               </div>
               <div class="prediction-label" [class.phishing]="pred.prediction === 1">
                 {{ pred.prediction === 1 ? '🚨 PHISHING' : '✅ BEZPIECZNY' }}
@@ -261,6 +279,16 @@
                   "
                   alt="Wykres prawdopodobieństw"
                 />
+                <a
+                  class="download-button"
+                  [href]="
+                    'data:image/png;base64,' +
+                    (urlAnalysis.visualizations?.charts?.probabilities || '')
+                  "
+                  download="wykres-url-{{ i + 1 }}-prawdopodobienstwa-modeli.png"
+                >
+                  ⬇ Pobierz wykres
+                </a>
               </div>
               <div *ngIf="urlAnalysis.visualizations?.charts?.voting" class="chart-card">
                 <h5>Głosowanie Random Forest</h5>
@@ -270,6 +298,15 @@
                   "
                   alt="Wykres głosowania"
                 />
+                <a
+                  class="download-button"
+                  [href]="
+                    'data:image/png;base64,' + (urlAnalysis.visualizations?.charts?.voting || '')
+                  "
+                  download="wykres-url-{{ i + 1 }}-glosowanie-random-forest.png"
+                >
+                  ⬇ Pobierz wykres
+                </a>
               </div>
               <div
                 *ngIf="urlAnalysis.visualizations?.charts?.feature_importance"
@@ -283,6 +320,16 @@
                   "
                   alt="Wykres ważności cech"
                 />
+                <a
+                  class="download-button"
+                  [href]="
+                    'data:image/png;base64,' +
+                    (urlAnalysis.visualizations?.charts?.feature_importance || '')
+                  "
+                  download="wykres-url-{{ i + 1 }}-waznosc-cech.png"
+                >
+                  ⬇ Pobierz wykres
+                </a>
               </div>
               <div *ngIf="urlAnalysis.visualizations?.charts?.ensemble_voting" class="chart-card">
                 <h5>Głosowanie zespołowe</h5>
@@ -293,6 +340,16 @@
                   "
                   alt="Wykres głosowania zespołowego"
                 />
+                <a
+                  class="download-button"
+                  [href]="
+                    'data:image/png;base64,' +
+                    (urlAnalysis.visualizations?.charts?.ensemble_voting || '')
+                  "
+                  download="wykres-url-{{ i + 1 }}-glosowanie-zespolowe.png"
+                >
+                  ⬇ Pobierz wykres
+                </a>
               </div>
             </div>
           </div>

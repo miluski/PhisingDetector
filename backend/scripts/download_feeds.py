@@ -4,7 +4,6 @@ import argparse
 import csv
 import io
 import logging
-import sys
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -31,6 +30,7 @@ def _fetch(url: str, timeout: int = 60) -> bytes:
 
 
 def fetch_phishing_db(feed_url: str, limit: int) -> list:
+    """Download active phishing URLs from the configured feed."""
     logger.info("Pobieram Phishing.Database (MIT): %s", feed_url)
     raw = _fetch(feed_url).decode("utf-8", errors="ignore")
     urls = [ln.strip() for ln in raw.splitlines() if ln.strip().startswith("http")]
@@ -39,6 +39,7 @@ def fetch_phishing_db(feed_url: str, limit: int) -> list:
 
 
 def fetch_legit(limit: int) -> list:
+    """Download HTTPS roots from the Tranco top list."""
     logger.info("Pobieram Tranco top list: %s", TRANCO_TOP)
     raw = _fetch(TRANCO_TOP)
     urls = []
@@ -56,6 +57,7 @@ def fetch_legit(limit: int) -> list:
 
 
 def build(output: Path, limit: int, phish_url: str):
+    """Download both feeds and write a balanced raw corpus."""
     phishing = fetch_phishing_db(phish_url, limit)
     legit = fetch_legit(limit)
 
@@ -77,6 +79,7 @@ def build(output: Path, limit: int, phish_url: str):
 
 
 def parse_args():
+    """Parse feed download options."""
     p = argparse.ArgumentParser(description="Download phishing+legit feeds -> raw_urls.csv")
     p.add_argument("--limit", type=int, default=60000,
                    help="Maks URL na klase (phishing i legit osobno)")
@@ -88,6 +91,7 @@ def parse_args():
 
 
 def main():
+    """Download feeds using parsed command-line options."""
     args = parse_args()
     build(args.output, args.limit, args.phish_url or PHISHING_DB_LINKS)
 

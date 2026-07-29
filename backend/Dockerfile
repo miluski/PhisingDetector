@@ -31,6 +31,8 @@ COPY services ./services
 COPY validators ./validators
 COPY data ./data
 COPY models ./models
+# Results are generated outside backend build context; model artifacts provide fallback metrics.
+RUN mkdir -p results/original/model_comparisons results/url_corpus/model_comparisons
 COPY utils ./utils
 
 EXPOSE 5001

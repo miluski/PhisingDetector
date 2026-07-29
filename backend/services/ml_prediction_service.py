@@ -1,308 +1,187 @@
-import pickle
+"""Facade for model loading, inference, ensembles and explanations."""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, List
-from pathlib import Path
-import logging
+
+from config.feature_policy import FEATURE_POLICY_VERSION
+from config.feature_modes import normalize_mode
+from services.feature_vector_builder import FeatureVectorBuilder
+from services.model_adapters import adapter_for
+from services.model_explainer import ModelExplainer
+from services.model_repository import ModelRepository
 from services.similar_sample_finder import SimilarSampleFinder
 
 logger = logging.getLogger("MLPredictionService")
 
 
 class MLPredictionService:
-    MODELS_WITH_MODEL_SUFFIX = {'xgboost', 'mlp', 'svm'}
-    MODELS_REQUIRING_SCALER = {'mlp', 'svm', 'logistic_regression'}
-    VALID_DATASETS = {'current', 'url_corpus'}
+    """Keep the public prediction API while delegating each responsibility."""
 
-    def __init__(self):
-        self.models = {}
-        self.scalers = {}
-        self.models_dir = Path(__file__).parent.parent / "models"
-        self.similar_sample_finder = SimilarSampleFinder()
-        logger.info(f"MLPredictionService initialized | Models dir: {self.models_dir}")
+    MODELS_REQUIRING_SCALER = {"mlp", "svm", "logistic_regression"}
+    MODELS_WITH_MODEL_SUFFIX = ModelRepository.MODEL_SUFFIXES
+    VALID_DATASETS = ModelRepository.VALID_DATASETS
 
-    def _normalize_dataset(self, dataset: str) -> str:
-        normalized = (dataset or 'current').strip().lower()
-        if normalized not in self.VALID_DATASETS:
-            return 'current'
-        return normalized
+    def __init__(self, repository: ModelRepository | None = None, similar_finder: Any = None):
+        """Initialize inference collaborators."""
+        directory = Path(__file__).parent.parent / "models"
+        self.repository = repository or ModelRepository(directory)
+        self.models_dir = directory
+        self.models = self.repository.models
+        self.scalers = self.repository.scalers
+        self.vector_builder = FeatureVectorBuilder()
+        self.explainer = ModelExplainer()
+        self.similar_sample_finder = similar_finder or SimilarSampleFinder()
 
-    def _get_model_filename(self, model_name: str, mode: str, dataset: str = 'current') -> str:
-        suffix = '' if dataset == 'current' else '_url_corpus'
-        if model_name in self.MODELS_WITH_MODEL_SUFFIX:
-            return f"{model_name}_model_{mode}{suffix}.pkl"
-        return f"{model_name}_{mode}{suffix}.pkl"
+    def _get_repository(self) -> ModelRepository:
+        """Return a repository, including for legacy test fixtures using ``__new__``."""
+        repository = getattr(self, "repository", None)
+        if repository is None:
+            repository = ModelRepository(getattr(self, "models_dir"))
+            repository.models = getattr(self, "models", {})
+            repository.scalers = getattr(self, "scalers", {})
+            self.repository = repository
+        return repository
 
-    def _get_scaler_filename(self, model_name: str, mode: str, dataset: str = 'current') -> str:
-        suffix = '' if dataset == 'current' else '_url_corpus'
-        return f"{model_name}_scaler_{mode}{suffix}.pkl"
+    def _normalize_dataset(self, dataset: str | None) -> str:
+        """Normalize a dataset name through the repository."""
+        return self._get_repository().normalize_dataset(dataset)
 
-    def _load_scaler(self, model_name: str, mode: str, dataset: str = 'current'):
-        dataset = self._normalize_dataset(dataset)
-        scaler_key = f"{model_name}_scaler_{mode}_{dataset}"
-        if scaler_key in self.scalers:
-            return self.scalers[scaler_key]
+    def load_model(self, model_name: str, mode: str = "optimized", dataset: str = "current") -> dict[str, Any]:
+        """Load one model payload using the repository."""
+        mode = normalize_mode(mode)
+        payload = self._get_repository().load(model_name, mode, dataset)
+        self._validate_policy(payload)
+        return payload
 
-        scaler_path = self.models_dir / model_name / self._get_scaler_filename(model_name, mode, dataset)
-        if scaler_path.exists():
-            with open(scaler_path, 'rb') as f:
-                scaler = pickle.load(f)
-            self.scalers[scaler_key] = scaler
-            logger.info(f"   ✅ Scaler loaded: {scaler_key}")
-            return scaler
-        return None
+    @staticmethod
+    def _validate_policy(payload: dict[str, Any]) -> None:
+        """Validate explicitly tagged payloads without rejecting legacy artifacts."""
+        policy = payload.get("feature_policy")
+        if policy and policy != FEATURE_POLICY_VERSION:
+            raise ValueError(f"Model feature policy mismatch: {policy!r}")
 
-    def load_model(self, model_name: str, mode: str = "optimized", dataset: str = 'current'):
-        dataset = self._normalize_dataset(dataset)
-        model_key = f"{model_name}_{mode}_{dataset}"
+    def _build_vector(self, features: dict[str, float], payload: dict[str, Any], model_name: str) -> pd.DataFrame:
+        """Build and optionally scale a vector according to model metadata."""
+        if not hasattr(self, "vector_builder"):
+            self.vector_builder = FeatureVectorBuilder()
+        names = payload["feature_names"]
+        vector = self.vector_builder.build(features, names)
+        scaler = payload.get("scaler") if model_name in self.MODELS_REQUIRING_SCALER else None
+        if scaler is not None:
+            vector = self.vector_builder.scale(vector, scaler, names)
+        return vector
 
-        if model_key in self.models:
-            logger.debug(f"   📦 Model cached: {model_key}")
-            return self.models[model_key]
-
-        model_file = self._get_model_filename(model_name, mode, dataset)
-        model_path = self.models_dir / model_name / model_file
-        logger.info(f"   📥 Loading model: {model_path}")
-
-        if not model_path.exists():
-            logger.error(f"   ❌ Model not found: {model_path}")
-            raise FileNotFoundError(f"Model not found: {model_path}")
-
-        with open(model_path, 'rb') as f:
-            loaded_data = pickle.load(f)
-
-        model_data = self._normalize_model_data(loaded_data, model_name, mode, dataset)
-        self.models[model_key] = model_data
-        logger.info(f"   ✅ Model loaded: {model_key} ({len(model_data.get('feature_names', []))} features)")
-        return model_data
-
-    def _normalize_model_data(self, loaded_data, model_name: str, mode: str, dataset: str = 'current') -> Dict[str, Any]:
-        if isinstance(loaded_data, dict) and 'model' in loaded_data:
-            return loaded_data
-
-        scaler = self._load_scaler(model_name, mode, dataset)
-        feature_names = self._get_feature_names_from_scaler_or_model(scaler, loaded_data, mode)
-
-        return {
-            'model': loaded_data,
-            'scaler': scaler,
-            'feature_names': feature_names
-        }
-
-    def _get_feature_names_from_scaler_or_model(self, scaler, model, mode: str) -> List[str]:
-        if scaler is not None and hasattr(scaler, 'feature_names_in_'):
-            return list(scaler.feature_names_in_)
-        if hasattr(model, 'feature_names_in_'):
-            return list(model.feature_names_in_)
-        from config.feature_names_config import FeatureConfig
-        return FeatureConfig.get_feature_names(mode)
-
-    def _prepare_feature_vector(self, features: Dict[str, float], feature_names: List[str]) -> pd.DataFrame:
-        feature_values = {name: features.get(name, 0.0) for name in feature_names}
-        df = pd.DataFrame([feature_values], columns=feature_names)
-        df = df.fillna(0.0)
-        return df
-
-    def _build_prediction_result(
-        self,
-        model_name: str,
-        mode: str,
-        prediction: int,
-        prediction_proba: np.ndarray,
-        feature_count: int
-    ) -> Dict[str, Any]:
-        return {
-            'model': model_name,
-            'mode': mode,
-            'prediction': int(prediction),
-            'prediction_label': 'Phishing' if prediction == 1 else 'Safe',
-            'probabilities': {
-                'safe': float(prediction_proba[0]),
-                'phishing': float(prediction_proba[1])
-            },
-            'confidence': float(max(prediction_proba)),
-            'features_used': feature_count
-        }
+    def _predict_payload(
+        self, payload: dict[str, Any], model_name: str, vector: pd.DataFrame,
+    ) -> tuple[int, np.ndarray]:
+        """Run an adapter and apply the payload threshold."""
+        adapter = adapter_for(model_name)
+        probabilities = adapter.probabilities(payload["model"], vector)
+        threshold = float(payload.get("decision_threshold", 0.5))
+        return adapter.prediction(probabilities, threshold), probabilities
 
     def predict_url(
-        self,
-        features: Dict[str, float],
-        model_name: str,
-        mode: str = "optimized",
-        dataset: str = 'current',
-        include_similar: bool = True
-    ) -> Dict[str, Any]:
+        self, features: dict[str, float], model_name: str, mode: str = "optimized",
+        dataset: str = "current", include_similar: bool = True,
+    ) -> dict[str, Any]:
+        """Predict one URL and optionally attach similar training samples."""
+        mode = normalize_mode(mode)
         dataset = self._normalize_dataset(dataset)
-        model_data = self.load_model(model_name, mode, dataset)
-        model = model_data['model']
-        feature_names = model_data['feature_names']
-        scaler = model_data.get('scaler')
+        payload = self.load_model(model_name, mode, dataset)
+        vector = self._build_vector(features, payload, model_name)
+        prediction, probabilities = self._predict_payload(payload, model_name, vector)
+        result = self._result(model_name, mode, dataset, prediction, probabilities, payload)
+        result.update(self._explain(model_name, payload, vector, features))
+        return self._with_similar(result, features, mode, dataset, include_similar)
 
-        feature_vector = self._prepare_feature_vector(features, feature_names)
+    def _result(self, model_name: str, mode: str, dataset: str, prediction: int,
+                probabilities: np.ndarray, payload: dict[str, Any]) -> dict[str, Any]:
+        """Build the stable public prediction response."""
+        return {
+            "model": model_name, "mode": mode, "dataset": dataset,
+            "prediction": int(prediction),
+            "prediction_label": "Phishing" if prediction else "Safe",
+            "probabilities": {"safe": float(probabilities[0]), "phishing": float(probabilities[1])},
+            "confidence": float(max(probabilities)),
+            "features_used": len(payload["feature_names"]),
+        }
 
-        if scaler is not None and model_name in self.MODELS_REQUIRING_SCALER:
-            feature_vector = pd.DataFrame(
-                scaler.transform(feature_vector),
-                columns=feature_names
-            )
+    def _explain(self, model_name: str, payload: dict[str, Any], vector: pd.DataFrame,
+                 features: dict[str, float]) -> dict[str, Any]:
+        """Return optional model-specific explanation data."""
+        if model_name != "random_forest":
+            return {}
+        if not hasattr(self, "explainer"):
+            self.explainer = ModelExplainer()
+        return self.explainer.random_forest(payload["model"], vector, features)
 
-        prediction, prediction_proba = self._get_prediction_and_proba(model, feature_vector, model_name)
-
-        result = self._build_prediction_result(
-            model_name, mode, prediction, prediction_proba, len(feature_names)
-        )
-        result['dataset'] = dataset
-
-        if model_name == 'random_forest':
-            result.update(
-                self._analyze_random_forest(model, feature_vector, features)
-            )
-
+    def _with_similar(self, result: dict[str, Any], features: dict[str, float], mode: str,
+                      dataset: str, include_similar: bool) -> dict[str, Any]:
+        """Attach similar samples when requested."""
         if include_similar:
-            similar_samples = self.similar_sample_finder.find_similar_samples(
+            result["similar_samples"] = self.similar_sample_finder.find_similar_samples(
                 features, mode, dataset, top_k=3
             )
-            result['similar_samples'] = similar_samples
-
         return result
 
-    def _get_prediction_and_proba(self, model, feature_vector: pd.DataFrame, model_name: str):
-        if model_name == 'mlp':
-            X = feature_vector.values
-            proba = model.predict(X, verbose=0)[0]
-            if len(proba) == 1:
-                phishing_prob = float(proba[0])
-                prediction_proba = np.array([1 - phishing_prob, phishing_prob])
-            else:
-                prediction_proba = proba
-            prediction = 1 if prediction_proba[1] > 0.5 else 0
-        else:
-            X = feature_vector.values
-            prediction = model.predict(X)[0]
-            prediction_proba = model.predict_proba(X)[0]
-        return prediction, prediction_proba
+    def _get_prediction_and_proba(self, model: Any, vector: pd.DataFrame, model_name: str,
+                                  decision_threshold: float = 0.5) -> tuple[int, np.ndarray]:
+        """Backward-compatible adapter entry point used by existing tests."""
+        adapter = adapter_for(model_name)
+        probabilities = adapter.probabilities(model, vector)
+        return adapter.prediction(probabilities, decision_threshold), probabilities
 
-    def _calculate_tree_votes(self, model, feature_vector: pd.DataFrame) -> Dict[str, int]:
-        X = feature_vector.values
-        tree_predictions = np.array([
-            tree.predict(X)[0]
-            for tree in model.estimators_
-        ])
-
-        return {
-            'safe': int(np.sum(tree_predictions == 0)),
-            'phishing': int(np.sum(tree_predictions == 1)),
-            'total': len(model.estimators_)
-        }
-
-    def _extract_top_features(self, model, feature_vector: pd.DataFrame, features: Dict[str, float]) -> List[Dict[str, Any]]:
-        feature_importance = model.feature_importances_
-        feature_names = feature_vector.columns.tolist()
-        sorted_indices = np.argsort(feature_importance)[::-1]
-
-        return [
-            {
-                'name': feature_names[idx],
-                'importance': float(feature_importance[idx]),
-                'value': float(features.get(feature_names[idx], 0))
-            }
-            for idx in sorted_indices[:10]
-        ]
-
-    def _analyze_random_forest(
-        self,
-        model,
-        feature_vector: pd.DataFrame,
-        features: Dict[str, float]
-    ) -> Dict[str, Any]:
-        votes = self._calculate_tree_votes(model, feature_vector)
-        top_features = self._extract_top_features(model, feature_vector, features)
-
-        return {
-            'voting': {
-                'safe': votes['safe'],
-                'phishing': votes['phishing'],
-                'total_trees': votes['total'],
-                'safe_percentage': float(votes['safe'] / votes['total'] * 100),
-                'phishing_percentage': float(votes['phishing'] / votes['total'] * 100)
-            },
-            'top_features': top_features
-        }
-
-    def predict_multiple_models(
-        self,
-        features: Dict[str, float],
-        model_names: List[str],
-        mode: str = "optimized",
-        dataset: str = 'current'
-    ) -> List[Dict[str, Any]]:
+    def predict_multiple_models(self, features: dict[str, float], model_names: list[str],
+                                mode: str = "optimized", dataset: str = "current"):
+        """Predict all requested models and retain similar samples once."""
+        mode = normalize_mode(mode)
         dataset = self._normalize_dataset(dataset)
-        results = []
-        similar_samples = None
+        results, similar = [], None
+        for index, name in enumerate(model_names):
+            result, similar = self._predict_one(features, name, mode, dataset, index == 0, similar)
+            results.append(result)
+        return results, similar
 
-        for i, model_name in enumerate(model_names):
-            try:
-                include_similar = (i == 0)
-                result = self.predict_url(features, model_name, mode, dataset, include_similar)
+    def _predict_one(self, features: dict[str, float], name: str, mode: str, dataset: str,
+                     include_similar: bool, similar: Any):
+        """Execute one model while converting failures to response records."""
+        try:
+            result = self.predict_url(features, name, mode, dataset, include_similar)
+            return result, result.get("similar_samples", similar)
+        except Exception as exc:
+            return {"model": name, "mode": mode, "dataset": dataset, "error": str(exc), "success": False}, similar
 
-                if include_similar and 'similar_samples' in result:
-                    similar_samples = result.pop('similar_samples')
+    def get_ensemble_prediction(self, features: dict[str, float], model_names: list[str],
+                                mode: str = "optimized", dataset: str = "current") -> dict[str, Any]:
+        """Predict models and aggregate their successful results."""
+        predictions, similar = self.predict_multiple_models(features, model_names, mode, dataset)
+        return self.get_ensemble_from_predictions(predictions, dataset, similar)
 
-                results.append(result)
-            except Exception as e:
-                results.append({
-                    'model': model_name,
-                    'mode': mode,
-                    'dataset': dataset,
-                    'error': str(e),
-                    'success': False
-                })
-
-        return results, similar_samples
-
-    def _filter_successful_predictions(self, predictions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return [p for p in predictions if 'error' not in p]
-
-    def _calculate_ensemble_votes(self, predictions: List[Dict[str, Any]]) -> Dict[str, int]:
-        phishing_count = sum(1 for p in predictions if p['prediction'] == 1)
-        return {
-            'phishing': phishing_count,
-            'safe': len(predictions) - phishing_count,
-            'total': len(predictions)
-        }
-
-    def _calculate_avg_probability(self, predictions: List[Dict[str, Any]]) -> float:
-        return np.mean([p['probabilities']['phishing'] for p in predictions])
-
-    def get_ensemble_prediction(
-        self,
-        features: Dict[str, float],
-        model_names: List[str],
-        mode: str = "optimized",
-        dataset: str = 'current'
-    ) -> Dict[str, Any]:
-        dataset = self._normalize_dataset(dataset)
-        predictions, similar_samples = self.predict_multiple_models(features, model_names, mode, dataset)
-        successful = self._filter_successful_predictions(predictions)
-
+    def get_ensemble_from_predictions(self, predictions: list[dict[str, Any]], dataset: str = "current",
+                                      similar_samples: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+        """Build an ensemble response without running inference again."""
+        successful = [item for item in predictions if "error" not in item]
         if not successful:
-            return {'success': False, 'error': 'All models failed to predict'}
-
-        votes = self._calculate_ensemble_votes(successful)
-        avg_prob = self._calculate_avg_probability(successful)
-        ensemble_pred = 1 if votes['phishing'] > votes['safe'] else 0
-
-        result = {
-            'ensemble_prediction': int(ensemble_pred),
-            'ensemble_label': 'Phishing' if ensemble_pred == 1 else 'Safe',
-            'dataset': dataset,
-            'models_voting': votes,
-            'average_phishing_probability': float(avg_prob),
-            'confidence': float(max(votes['phishing'], votes['safe']) / votes['total']),
-            'individual_predictions': successful
-        }
-
+            return {"success": False, "error": "All models failed to predict"}
+        votes = self._ensemble_votes(successful)
+        result = {"ensemble_prediction": int(votes["phishing"] > votes["safe"]),
+                  "ensemble_label": "Phishing" if votes["phishing"] > votes["safe"] else "Safe",
+                  "dataset": dataset, "models_voting": votes,
+                  "average_phishing_probability": float(np.mean([p["probabilities"]["phishing"] for p in successful])),
+                  "confidence": float(max(votes["phishing"], votes["safe"]) / votes["total"]),
+                  "individual_predictions": successful}
         if similar_samples:
-            result['similar_samples'] = similar_samples
-
+            result["similar_samples"] = similar_samples
         return result
+
+    @staticmethod
+    def _ensemble_votes(predictions: list[dict[str, Any]]) -> dict[str, int]:
+        """Count phishing and safe model votes."""
+        phishing = sum(item["prediction"] == 1 for item in predictions)
+        return {"phishing": phishing, "safe": len(predictions) - phishing, "total": len(predictions)}

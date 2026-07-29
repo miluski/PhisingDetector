@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(python3 edit_notebook.py)",
+      "Bash(python3)",
+      "Bash(python3 -c 'import json; json.load\\(open\\('\\\\''/Users/maksymiliansowula/Documents/Studia/3semestrmgr/Magisterka/PhisingDetector/backend/notebooks/original/1_logistic_regression_phishing_detection.ipynb'\\\\''\\)\\); print\\('\\\\''VALID JSON'\\\\''\\)')"
+    ]
+  }
+}

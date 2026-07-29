@@ -1,3 +1,5 @@
+"""Generate base64 PNG explanations for API responses."""
+
 import os
 from pathlib import Path
 from typing import Dict, Any, List
@@ -20,9 +22,21 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
+MODEL_LABELS = {
+    "random_forest": "Random Forest",
+    "xgboost": "XGBoost",
+    "mlp": "MLP",
+    "svm": "SVM",
+    "logistic_regression": "Regresja logistyczna",
+}
+
+
 class AnalysisVisualizer:
+    """Render model probabilities, voting and feature importance charts."""
+
     def __init__(self):
-        sns.set_theme(style="whitegrid", palette="viridis")
+        """Initialize the non-interactive plotting style."""
+        sns.set_theme(style="whitegrid", palette="colorblind")
         plt.rcParams['figure.facecolor'] = 'white'
         plt.rcParams['font.size'] = 10
 
@@ -36,7 +50,7 @@ class AnalysisVisualizer:
 
     def _extract_probabilities(self, predictions: List[Dict[str, Any]]) -> tuple:
         valid = [p for p in predictions if 'error' not in p]
-        models = [p['model'] for p in valid]
+        models = [MODEL_LABELS.get(p['model'], p['model']) for p in valid]
         safe = [p['probabilities']['safe'] * 100 for p in valid]
         phishing = [p['probabilities']['phishing'] * 100 for p in valid]
         return models, safe, phishing
@@ -53,18 +67,23 @@ class AnalysisVisualizer:
         self,
         predictions: List[Dict[str, Any]]
     ) -> str:
+        """Render safe/phishing probabilities for each selected model."""
         fig, ax = plt.subplots(figsize=(10, 6))
         models, safe_probs, phishing_probs = self._extract_probabilities(predictions)
+        self._draw_probability_axes(ax, models, safe_probs, phishing_probs)
+        return self._fig_to_base64(fig)
 
+    def _draw_probability_axes(self, ax, models, safe_probs, phishing_probs):
+        """Draw grouped probability bars and their annotations."""
         x = np.arange(len(models))
         width = 0.35
 
-        bars1 = ax.bar(x - width/2, safe_probs, width, label='Safe', color='#2ecc71', alpha=0.8)
-        bars2 = ax.bar(x + width/2, phishing_probs, width, label='Phishing', color='#e74c3c', alpha=0.8)
+        bars1 = ax.bar(x - width / 2, safe_probs, width, label='Bezpieczny', color='#2ecc71', alpha=0.8)
+        bars2 = ax.bar(x + width / 2, phishing_probs, width, label='Phishing', color='#e74c3c', alpha=0.8)
 
-        ax.set_xlabel('Model', fontweight='bold')
-        ax.set_ylabel('Probability (%)', fontweight='bold')
-        ax.set_title('Phishing Detection Probability by Model', fontweight='bold')
+        ax.set_xlabel('Model uczenia maszynowego', fontweight='bold')
+        ax.set_ylabel('Prawdopodobieństwo [%]', fontweight='bold')
+        ax.set_title('Prawdopodobieństwo klasyfikacji według modelu', fontweight='bold')
         ax.set_xticks(x)
         ax.set_xticklabels(models, rotation=45, ha='right')
         ax.legend()
@@ -74,85 +93,60 @@ class AnalysisVisualizer:
         self._add_bar_labels(ax, bars1)
         self._add_bar_labels(ax, bars2)
 
-        return self._fig_to_base64(fig)
 
     def create_voting_chart(self, prediction: Dict[str, Any]) -> str:
+        """Render Random Forest tree voting when available."""
         if 'voting' not in prediction:
             return None
-
-        fig, ax = plt.subplots(figsize=(8, 8))
-
         voting = prediction['voting']
-        sizes = [voting['safe'], voting['phishing']]
-        labels = ['Safe', 'Phishing']
-        colors = ['#2ecc71', '#e74c3c']
-        explode = (0.05, 0.05)
-
-        ax.pie(
-            sizes, explode=explode, labels=labels, colors=colors,
-            autopct='%1.1f%%', shadow=True, startangle=90,
-            textprops={'fontsize': 12, 'fontweight': 'bold'}
-        )
-
-        ax.set_title(
-            f'Random Forest Tree Voting\n'
-            f'({voting["total_trees"]} trees)',
-            fontweight='bold', fontsize=14, pad=15
-        )
-
-        return self._fig_to_base64(fig)
+        title = f'Głosowanie drzew Random Forest\n({voting["total_trees"]} drzew)'
+        return self._pie_chart([voting['safe'], voting['phishing']], title)
 
     def create_feature_importance_chart(
         self,
         prediction: Dict[str, Any]
     ) -> str:
+        """Render the most influential Random Forest features."""
         if 'top_features' not in prediction:
             return None
-
         fig, ax = plt.subplots(figsize=(10, 6))
-
         features = prediction['top_features']
         names = [f['name'] for f in features]
         importances = [f['importance'] * 100 for f in features]
+        self._draw_importance_axes(ax, names, importances)
+        return self._fig_to_base64(fig)
 
+    def _draw_importance_axes(self, ax, names, importances):
+        """Draw horizontal feature importance bars."""
         y_pos = np.arange(len(names))
         ax.barh(y_pos, importances, color='#3498db', alpha=0.8)
 
         ax.set_yticks(y_pos)
         ax.set_yticklabels(names)
-        ax.set_xlabel('Importance (%)', fontweight='bold')
-        ax.set_title('Top 10 Most Important Features', fontweight='bold')
+        ax.set_xlabel('Ważność cechy [%]', fontweight='bold')
+        ax.set_title('Dziesięć najważniejszych cech', fontweight='bold')
         ax.grid(True, alpha=0.3, axis='x')
 
         for i, v in enumerate(importances):
             ax.text(v + 0.5, i, f'{v:.2f}%', va='center', fontsize=8)
 
-        return self._fig_to_base64(fig)
 
     def create_ensemble_voting_chart(
         self,
         ensemble_result: Dict[str, Any]
     ) -> str:
-        fig, ax = plt.subplots(figsize=(8, 8))
-
+        """Render model-level ensemble voting proportions."""
         voting = ensemble_result['models_voting']
-        sizes = [voting['safe'], voting['phishing']]
-        labels = ['Safe', 'Phishing']
-        colors = ['#2ecc71', '#e74c3c']
-        explode = (0.05, 0.05)
+        title = f'Głosowanie zespołowe modeli\n({voting["total"]} modeli)'
+        return self._pie_chart([voting['safe'], voting['phishing']], title)
 
-        ax.pie(
-            sizes, explode=explode, labels=labels, colors=colors,
-            autopct='%1.1f%%', shadow=True, startangle=90,
-            textprops={'fontsize': 12, 'fontweight': 'bold'}
-        )
-
-        ax.set_title(
-            f'Ensemble Model Voting\n'
-            f'({voting["total"]} models)',
-            fontweight='bold', fontsize=14, pad=15
-        )
-
+    def _pie_chart(self, sizes, title):
+        """Render a standard two-class voting pie chart."""
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.pie(sizes, explode=(0.05, 0.05), labels=['Bezpieczny', 'Phishing'],
+               colors=['#2ecc71', '#e74c3c'], autopct='%1.1f%%', shadow=True,
+               startangle=90, textprops={'fontsize': 12, 'fontweight': 'bold'})
+        ax.set_title(title, fontweight='bold', fontsize=14, pad=15)
         return self._fig_to_base64(fig)
 
     def _find_rf_prediction(self, predictions: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -176,6 +170,7 @@ class AnalysisVisualizer:
         predictions: List[Dict[str, Any]],
         ensemble_result: Dict[str, Any] = None
     ) -> Dict[str, Any]:
+        """Build all available visual explanations for one URL result."""
         report = {'url': url, 'charts': {}}
         report['charts']['probabilities'] = self.create_probability_chart(predictions)
 

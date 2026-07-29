@@ -16,6 +16,7 @@ logger = logging.getLogger("SandboxRunner")
 
 
 class SandboxRunner:
+    """Execute URL feature extraction and model prediction inside a sandbox."""
     def __init__(self):
         self.start_time = datetime.now()
         self.feature_service = None
@@ -42,7 +43,7 @@ class SandboxRunner:
         logger.info("🔧 Initializing services...")
         from services.url_feature_service import URLFeatureService
         from services.ml_prediction_service import MLPredictionService
-        self.feature_service = URLFeatureService()
+        self.feature_service = URLFeatureService(apply_network_defaults=False)
         self.prediction_service = MLPredictionService()
         logger.info("   ✅ Services initialized")
 
@@ -69,16 +70,26 @@ class SandboxRunner:
             status = "🚨 PHISHING" if pred['prediction'] == 1 else "✅ SAFE"
             logger.info(f"      {pred['model']}: {status} (confidence: {pred['confidence']*100:.1f}%)")
 
-    def _compute_ensemble(self, features: Dict, models: List[str], mode: str, dataset: str) -> Dict:
+    def _compute_ensemble(
+        self,
+        predictions: List[Dict],
+        dataset: str,
+        similar_samples: List[Dict] | None = None,
+    ) -> Dict:
         logger.info("   🎯 Computing ensemble prediction...")
-        ensemble = self.prediction_service.get_ensemble_prediction(features, models, mode, dataset)
+        ensemble = self.prediction_service.get_ensemble_from_predictions(
+            predictions, dataset, similar_samples
+        )
         self._log_ensemble(ensemble)
         return ensemble
 
     def _log_ensemble(self, ensemble: Dict):
         status = "🚨 PHISHING" if ensemble['ensemble_prediction'] == 1 else "✅ SAFE"
         logger.info(f"   ✅ Ensemble result: {status}")
-        logger.info(f"      Voting: {ensemble['models_voting']['phishing']} phishing / {ensemble['models_voting']['safe']} safe")
+        voting = ensemble['models_voting']
+        logger.info(
+            f"      Voting: {voting['phishing']} phishing / {voting['safe']} safe"
+        )
         logger.info(f"      Confidence: {ensemble['confidence']*100:.1f}%")
 
     def _analyze_url(self, url: str, idx: int, total: int, models: List[str], mode: str, dataset: str) -> Dict:
@@ -87,21 +98,20 @@ class SandboxRunner:
         url_result = {'url': url, 'success': False}
 
         try:
-            features = self._extract_features(url, mode)
-            predictions, similar_samples = self._run_predictions(features, models, mode, dataset)
-            ensemble = self._compute_ensemble(features, models, mode, dataset)
-            url_result.update({
-                'success': True,
-                'features': features,
-                'predictions': predictions,
-                'ensemble': ensemble,
-                'similar_samples': similar_samples
-            })
+            url_result.update(self._analyze_payload(url, models, mode, dataset))
         except Exception as e:
             logger.exception("   ❌ Error analyzing URL")
             url_result['error'] = str(e)
 
         return url_result
+
+    def _analyze_payload(self, url, models, mode, dataset):
+        """Extract, predict and assemble one successful URL result."""
+        features = self._extract_features(url, mode)
+        predictions, similar = self._run_predictions(features, models, mode, dataset)
+        ensemble = self._compute_ensemble(predictions, dataset, similar)
+        return {'success': True, 'features': features, 'predictions': predictions,
+                'ensemble': ensemble, 'similar_samples': similar}
 
     def _log_completion(self, results: List[Dict], urls: List[str]):
         duration = (datetime.now() - self.start_time).total_seconds()
@@ -114,6 +124,7 @@ class SandboxRunner:
         logger.info("=" * 60)
 
     def run(self) -> Dict[str, Any]:
+        """Run configured URLs and return a JSON-serializable result."""
         logger.info("=" * 60)
         logger.info("🔒 SANDBOX CONTAINER STARTED")
         logger.info("=" * 60)
@@ -122,20 +133,24 @@ class SandboxRunner:
         self._log_config(urls, models, mode, dataset)
         self._initialize_services()
 
-        results = [self._analyze_url(url, i, len(urls), models, mode, dataset) for i, url in enumerate(urls, 1)]
+        results = self._run_urls(urls, models, mode, dataset)
         self._log_completion(results, urls)
 
-        return {
-            'success': True,
-            'results': results,
-            'total_urls': len(urls),
-            'mode': mode,
-            'dataset': dataset,
-            'models': models
-        }
+        return self._result_payload(results, urls, mode, dataset, models)
+
+    def _result_payload(self, results, urls, mode, dataset, models):
+        """Build the public sandbox response dictionary."""
+        return {'success': True, 'results': results, 'total_urls': len(urls),
+                'mode': mode, 'dataset': dataset, 'models': models}
+
+    def _run_urls(self, urls, models, mode, dataset):
+        """Analyze configured URLs in input order."""
+        return [self._analyze_url(url, index, len(urls), models, mode, dataset)
+                for index, url in enumerate(urls, 1)]
 
 
 def main():
+    """Run the sandbox runner and emit a controlled JSON error on failure."""
     try:
         runner = SandboxRunner()
         output = runner.run()
