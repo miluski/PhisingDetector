@@ -9,14 +9,14 @@
       [class.active]="analysisType === 'email'"
       (click)="analysisType = 'email'; reset()"
       class="type-button"
-    >
+      >
       📧 Analiza wiadomości e-mail
     </button>
     <button
       [class.active]="analysisType === 'sms'"
       (click)="analysisType = 'sms'; reset()"
       class="type-button"
-    >
+      >
       💬 Analiza SMS
     </button>
   </div>
@@ -25,29 +25,33 @@
     <div class="input-panel">
       <h2>{{ analysisType === 'email' ? 'Szczegóły wiadomości e-mail' : 'Treść wiadomości SMS' }}</h2>
 
-      <div class="form-group" *ngIf="analysisType === 'email'">
-        <label for="sender">Adres e-mail nadawcy</label>
-        <input
-          id="sender"
-          type="email"
-          [(ngModel)]="sender"
-          (ngModelChange)="clearExampleStatus()"
-          placeholder="nadawca@example.com"
-          class="input-field"
-        />
-      </div>
+      @if (analysisType === 'email') {
+        <div class="form-group">
+          <label for="sender">Adres e-mail nadawcy</label>
+          <input
+            id="sender"
+            type="email"
+            [(ngModel)]="sender"
+            (ngModelChange)="clearExampleStatus()"
+            placeholder="nadawca@example.com"
+            class="input-field"
+            />
+        </div>
+      }
 
-      <div class="form-group" *ngIf="analysisType === 'email'">
-        <label for="receiver">Adres e-mail odbiorcy</label>
-        <input
-          id="receiver"
-          type="email"
-          [(ngModel)]="receiver"
-          (ngModelChange)="clearExampleStatus()"
-          placeholder="odbiorca@example.com"
-          class="input-field"
-        />
-      </div>
+      @if (analysisType === 'email') {
+        <div class="form-group">
+          <label for="receiver">Adres e-mail odbiorcy</label>
+          <input
+            id="receiver"
+            type="email"
+            [(ngModel)]="receiver"
+            (ngModelChange)="clearExampleStatus()"
+            placeholder="odbiorca@example.com"
+            class="input-field"
+            />
+        </div>
+      }
 
       <div class="form-group">
         <label for="content">{{
@@ -70,39 +74,49 @@
           class="select-button example-button"
           [disabled]="isLoadingExamples || !hasMessageExamples()"
           (click)="insertExample()"
-        >
+          >
           {{ isLoadingExamples ? 'Wczytywanie przykładów...' : 'Wstaw losowy przykład' }}
         </button>
-        <p *ngIf="selectedExampleIsPhishing !== null" class="example-status">
-          Zawiera phishingowy adres URL:
-          <strong>{{ selectedExampleIsPhishing ? 'tak' : 'nie' }}</strong>
-        </p>
+        @if (selectedExampleIsPhishing !== null) {
+          <p class="example-status">
+            Zawiera phishingowy adres URL:
+            <strong>{{ selectedExampleIsPhishing ? 'tak' : 'nie' }}</strong>
+          </p>
+        }
       </div>
 
-      <div class="form-group" *ngIf="analysisType === 'email'">
-        <label for="attachments">Załączniki (PDF, DOCX, TXT)</label>
-        <input
-          id="attachments"
-          type="file"
-          (change)="onFileSelected($event)"
-          multiple
-          accept=".pdf,.docx,.doc,.txt"
-          class="file-input"
-        />
-        <div *ngIf="attachments.length > 0" class="file-list">
-          <div *ngFor="let file of attachments" class="file-item">
-            📎 {{ file.name }} ({{ (file.size / 1024).toFixed(1) }} KB)
-          </div>
+      @if (analysisType === 'email') {
+        <div class="form-group">
+          <label for="attachments">Załączniki (PDF, DOCX, TXT)</label>
+          <input
+            id="attachments"
+            type="file"
+            (change)="onFileSelected($event)"
+            multiple
+            accept=".pdf,.docx,.doc,.txt"
+            class="file-input"
+            />
+          @if (attachments.length > 0) {
+            <div class="file-list">
+              @for (file of attachments; track file) {
+                <div class="file-item">
+                  📎 {{ file.name }} ({{ (file.size / 1024).toFixed(1) }} KB)
+                </div>
+              }
+            </div>
+          }
         </div>
-      </div>
+      }
 
       <div class="form-group">
         <p>Zbiór modeli i próbek</p>
         <div class="mode-selector">
-          <label class="radio-label" *ngFor="let ds of availableDatasets">
-            <input type="radio" [(ngModel)]="dataset" [value]="ds.id" name="dataset" />
-            <span>{{ ds.name }}: {{ ds.description }}</span>
-          </label>
+          @for (ds of availableDatasets; track ds) {
+            <label class="radio-label">
+              <input type="radio" [(ngModel)]="dataset" [value]="ds.id" name="dataset" />
+              <span>{{ ds.name }}: {{ ds.description }}</span>
+            </label>
+          }
         </div>
       </div>
 
@@ -128,18 +142,20 @@
             <button (click)="deselectAllModels()" class="select-button">Odznacz wszystkie</button>
           </div>
           <div class="model-list">
-            <label *ngFor="let model of availableModels" class="model-checkbox">
-              <input
-                type="checkbox"
-                [checked]="selectedModels.includes(model.id)"
-                (change)="toggleModel(model.id)"
-              />
+            @for (model of availableModels; track model) {
+              <label class="model-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="selectedModels.includes(model.id)"
+                  (change)="toggleModel(model.id)"
+                  />
                 <div class="model-info">
                   <strong>{{ model.name }}</strong>
                   <small>{{ model.description }}</small>
                   <small>Dokładność testowa: {{ getModelAccuracy(model.id) }}</small>
                 </div>
-            </label>
+              </label>
+            }
           </div>
         </div>
       </div>
@@ -149,275 +165,307 @@
           (click)="analyze()"
           [disabled]="isAnalyzing || selectedModels.length === 0"
           class="analyze-button"
-        >
-          <span *ngIf="!isAnalyzing">🔍 Analizuj</span>
-          <span *ngIf="isAnalyzing">⏳ Analizowanie...</span>
+          >
+          @if (!isAnalyzing) {
+            <span>🔍 Analizuj</span>
+          }
+          @if (isAnalyzing) {
+            <span>⏳ Analizowanie...</span>
+          }
         </button>
         <button (click)="reset()" class="reset-button">🔄 Resetuj</button>
       </div>
 
-      <div *ngIf="error" class="error-message">⚠️ {{ error }}</div>
+      @if (error) {
+        <div class="error-message">⚠️ {{ error }}</div>
+      }
     </div>
 
-    <div class="results-panel" *ngIf="result">
-      <h2>Wyniki analizy</h2>
-
-      <div class="threat-indicator" [ngClass]="getThreatClass()">
-        <div class="threat-icon">{{ result.is_phishing ? '🚨' : '✅' }}</div>
-        <div class="threat-text">{{ getThreatLevel() }}</div>
-      </div>
-
-      <div class="summary-card">
-        <h3>Podsumowanie</h3>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <span class="label">Znalezione URL:</span>
-            <span class="value">{{ result.urls_found }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Użyte modele:</span>
-            <span class="value">{{ selectedModels.length }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Tryb analizy:</span>
-            <span class="value">{{ mode }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Zbiór:</span>
-            <span class="value">{{ result.dataset || dataset }}</span>
-          </div>
+    @if (result) {
+      <div class="results-panel">
+        <h2>Wyniki analizy</h2>
+        <div class="threat-indicator" [ngClass]="getThreatClass()">
+          <div class="threat-icon">{{ result.is_phishing ? '🚨' : '✅' }}</div>
+          <div class="threat-text">{{ getThreatLevel() }}</div>
         </div>
-        <div *ngIf="result.urls.length > 0" class="urls-list">
-          <strong>Wykryte URL:</strong>
-          <ul>
-            <li *ngFor="let url of result.urls">{{ url }}</li>
-          </ul>
-        </div>
-      </div>
-
-      <div *ngFor="let urlAnalysis of result.analysis; let i = index" class="url-analysis">
-        <div class="url-header">
-          <span class="url-number">URL #{{ i + 1 }}</span>
-          <span *ngIf="urlAnalysis.receiver_domain" class="context-badge">Domena odbiorcy · analizowana</span>
-          <h3>{{ urlAnalysis.url }}</h3>
-        </div>
-
-        <div *ngIf="!urlAnalysis.success" class="error-card">❌ {{ urlAnalysis.error }}</div>
-
-        <div *ngIf="urlAnalysis.success">
-          <div class="ensemble-result" *ngIf="urlAnalysis.ensemble">
-            <h4>🎯 Predykcja zespołowa</h4>
-            <div
-              class="ensemble-verdict"
-              [class.phishing]="urlAnalysis.ensemble.ensemble_prediction === 1"
-            >
-              <strong>{{ urlAnalysis.ensemble.ensemble_label }}</strong>
-              <small>Pewność: {{ (urlAnalysis.ensemble.confidence * 100).toFixed(1) }}%</small>
+        <div class="summary-card">
+          <h3>Podsumowanie</h3>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="label">Znalezione URL:</span>
+              <span class="value">{{ result.urls_found }}</span>
             </div>
-            <div class="voting-summary">
-              <span class="vote-item phishing"
-                >🚨 Phishing: {{ urlAnalysis.ensemble.models_voting.phishing }}</span
-              >
-              <span class="vote-item safe"
-                >✅ Bezpieczny: {{ urlAnalysis.ensemble.models_voting.safe }}</span
-              >
+            <div class="summary-item">
+              <span class="label">Użyte modele:</span>
+              <span class="value">{{ selectedModels.length }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">Tryb analizy:</span>
+              <span class="value">{{ mode }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">Zbiór:</span>
+              <span class="value">{{ result.dataset || dataset }}</span>
             </div>
           </div>
-
-          <h4 class="section-title">📊 Wyniki poszczególnych modeli</h4>
-          <div class="predictions-grid">
-            <div *ngFor="let pred of urlAnalysis.predictions" class="prediction-card">
-              <div class="model-header">
-                <h5>{{ getModelDisplayName(pred.model) }}</h5>
-                <span class="model-id">({{ pred.model }})</span>
-                <span class="model-id">{{ pred.features_used }} cech wejściowych</span>
-              </div>
-              <div class="prediction-label" [class.phishing]="pred.prediction === 1">
-                {{ pred.prediction === 1 ? '🚨 PHISHING' : '✅ BEZPIECZNY' }}
-              </div>
-
-              <div class="confidence-section">
-                <span class="confidence-value"
-                  >Pewność: {{ (pred.confidence * 100).toFixed(1) }}%</span
-                >
-                <div class="confidence-bar">
-                  <div
-                    class="bar-fill"
-                    [style.width.%]="pred.confidence * 100"
-                    [class.phishing]="pred.prediction === 1"
-                  ></div>
-                </div>
-              </div>
-
-              <div *ngIf="pred.voting" class="voting-details">
-                <strong>🌳 Głosowanie drzew (Random Forest):</strong>
-                <div class="tree-votes">
-                  <div class="tree-vote safe">
-                    Bezpieczny: {{ pred.voting.safe }} ({{
-                      pred.voting.safe_percentage.toFixed(1)
-                    }}%)
-                  </div>
-                  <div class="tree-vote phishing">
-                    Phishing: {{ pred.voting.phishing }} ({{
-                      pred.voting.phishing_percentage.toFixed(1)
-                    }}%)
-                  </div>
-                </div>
-              </div>
+          @if (result.urls.length > 0) {
+            <div class="urls-list">
+              <strong>Wykryte URL:</strong>
+              <ul>
+                @for (url of result.urls; track url) {
+                  <li>{{ url }}</li>
+                }
+              </ul>
             </div>
-          </div>
-
-          <div class="visualizations" *ngIf="urlAnalysis.visualizations?.charts">
-            <h4 class="section-title">📈 Wizualizacje</h4>
-            <div class="charts-grid">
-              <div *ngIf="urlAnalysis.visualizations?.charts?.probabilities" class="chart-card">
-                <h5>Prawdopodobieństwa modeli</h5>
-                <img
+          }
+        </div>
+        @for (urlAnalysis of result.analysis; track urlAnalysis; let i = $index) {
+          <div class="url-analysis">
+            <div class="url-header">
+              <span class="url-number">URL #{{ i + 1 }}</span>
+              @if (urlAnalysis.receiver_domain) {
+                <span class="context-badge">Domena odbiorcy · analizowana</span>
+              }
+              <h3>{{ urlAnalysis.url }}</h3>
+            </div>
+            @if (!urlAnalysis.success) {
+              <div class="error-card">❌ {{ urlAnalysis.error }}</div>
+            }
+            @if (urlAnalysis.success) {
+              <div>
+                @if (urlAnalysis.ensemble) {
+                  <div class="ensemble-result">
+                    <h4>🎯 Predykcja zespołowa</h4>
+                    <div
+                      class="ensemble-verdict"
+                      [class.phishing]="urlAnalysis.ensemble.ensemble_prediction === 1"
+                      >
+                      <strong>{{ urlAnalysis.ensemble.ensemble_label }}</strong>
+                      <small>Pewność: {{ (urlAnalysis.ensemble.confidence * 100).toFixed(1) }}%</small>
+                    </div>
+                    <div class="voting-summary">
+                      <span class="vote-item phishing"
+                        >🚨 Phishing: {{ urlAnalysis.ensemble.models_voting.phishing }}</span
+                        >
+                        <span class="vote-item safe"
+                          >✅ Bezpieczny: {{ urlAnalysis.ensemble.models_voting.safe }}</span
+                          >
+                        </div>
+                      </div>
+                    }
+                    <h4 class="section-title">📊 Wyniki poszczególnych modeli</h4>
+                    <div class="predictions-grid">
+                      @for (pred of urlAnalysis.predictions; track pred) {
+                        <div class="prediction-card">
+                          <div class="model-header">
+                            <h5>{{ getModelDisplayName(pred.model) }}</h5>
+                            <span class="model-id">({{ pred.model }})</span>
+                            <span class="model-id">{{ pred.features_used }} cech wejściowych</span>
+                          </div>
+                          <div class="prediction-label" [class.phishing]="pred.prediction === 1">
+                            {{ pred.prediction === 1 ? '🚨 PHISHING' : '✅ BEZPIECZNY' }}
+                          </div>
+                          <div class="confidence-section">
+                            <span class="confidence-value"
+                              >Pewność: {{ (pred.confidence * 100).toFixed(1) }}%</span
+                              >
+                              <div class="confidence-bar">
+                                <div
+                                  class="bar-fill"
+                                  [style.width.%]="pred.confidence * 100"
+                                  [class.phishing]="pred.prediction === 1"
+                                ></div>
+                              </div>
+                            </div>
+                            @if (pred.voting) {
+                              <div class="voting-details">
+                                <strong>🌳 Głosowanie drzew (Random Forest):</strong>
+                                <div class="tree-votes">
+                                  <div class="tree-vote safe">
+                                    Bezpieczny: {{ pred.voting.safe }} ({{
+                                    pred.voting.safe_percentage.toFixed(1)
+                                    }}%)
+                                  </div>
+                                  <div class="tree-vote phishing">
+                                    Phishing: {{ pred.voting.phishing }} ({{
+                                    pred.voting.phishing_percentage.toFixed(1)
+                                    }}%)
+                                  </div>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                      @if (urlAnalysis.visualizations?.charts) {
+                        <div class="visualizations">
+                          <h4 class="section-title">📈 Wizualizacje</h4>
+                          <div class="charts-grid">
+                            @if (urlAnalysis.visualizations?.charts?.probabilities) {
+                              <div class="chart-card">
+                                <h5>Prawdopodobieństwa modeli</h5>
+                                <img
                   [src]="
                     'data:image/png;base64,' +
                     (urlAnalysis.visualizations?.charts?.probabilities || '')
                   "
-                  alt="Wykres prawdopodobieństw"
-                />
-                <a
-                  class="download-button"
+                                  alt="Wykres prawdopodobieństw"
+                                  />
+                                <a
+                                  class="download-button"
                   [href]="
                     'data:image/png;base64,' +
                     (urlAnalysis.visualizations?.charts?.probabilities || '')
                   "
-                  download="wykres-url-{{ i + 1 }}-prawdopodobienstwa-modeli.png"
-                >
-                  ⬇ Pobierz wykres
-                </a>
-              </div>
-              <div *ngIf="urlAnalysis.visualizations?.charts?.voting" class="chart-card">
-                <h5>Głosowanie Random Forest</h5>
-                <img
+                                  download="wykres-url-{{ i + 1 }}-prawdopodobienstwa-modeli.png"
+                                  >
+                                  ⬇ Pobierz wykres
+                                </a>
+                              </div>
+                            }
+                            @if (urlAnalysis.visualizations?.charts?.voting) {
+                              <div class="chart-card">
+                                <h5>Głosowanie Random Forest</h5>
+                                <img
                   [src]="
                     'data:image/png;base64,' + (urlAnalysis.visualizations?.charts?.voting || '')
                   "
-                  alt="Wykres głosowania"
-                />
-                <a
-                  class="download-button"
+                                  alt="Wykres głosowania"
+                                  />
+                                <a
+                                  class="download-button"
                   [href]="
                     'data:image/png;base64,' + (urlAnalysis.visualizations?.charts?.voting || '')
                   "
-                  download="wykres-url-{{ i + 1 }}-glosowanie-random-forest.png"
-                >
-                  ⬇ Pobierz wykres
-                </a>
-              </div>
-              <div
-                *ngIf="urlAnalysis.visualizations?.charts?.feature_importance"
-                class="chart-card"
-              >
-                <h5>Ważność cech</h5>
-                <img
+                                  download="wykres-url-{{ i + 1 }}-glosowanie-random-forest.png"
+                                  >
+                                  ⬇ Pobierz wykres
+                                </a>
+                              </div>
+                            }
+                            @if (urlAnalysis.visualizations?.charts?.feature_importance) {
+                              <div
+                                class="chart-card"
+                                >
+                                <h5>Ważność cech</h5>
+                                <img
                   [src]="
                     'data:image/png;base64,' +
                     (urlAnalysis.visualizations?.charts?.feature_importance || '')
                   "
-                  alt="Wykres ważności cech"
-                />
-                <a
-                  class="download-button"
+                                  alt="Wykres ważności cech"
+                                  />
+                                <a
+                                  class="download-button"
                   [href]="
                     'data:image/png;base64,' +
                     (urlAnalysis.visualizations?.charts?.feature_importance || '')
                   "
-                  download="wykres-url-{{ i + 1 }}-waznosc-cech.png"
-                >
-                  ⬇ Pobierz wykres
-                </a>
-              </div>
-              <div *ngIf="urlAnalysis.visualizations?.charts?.ensemble_voting" class="chart-card">
-                <h5>Głosowanie zespołowe</h5>
-                <img
+                                  download="wykres-url-{{ i + 1 }}-waznosc-cech.png"
+                                  >
+                                  ⬇ Pobierz wykres
+                                </a>
+                              </div>
+                            }
+                            @if (urlAnalysis.visualizations?.charts?.ensemble_voting) {
+                              <div class="chart-card">
+                                <h5>Głosowanie zespołowe</h5>
+                                <img
                   [src]="
                     'data:image/png;base64,' +
                     (urlAnalysis.visualizations?.charts?.ensemble_voting || '')
                   "
-                  alt="Wykres głosowania zespołowego"
-                />
-                <a
-                  class="download-button"
+                                  alt="Wykres głosowania zespołowego"
+                                  />
+                                <a
+                                  class="download-button"
                   [href]="
                     'data:image/png;base64,' +
                     (urlAnalysis.visualizations?.charts?.ensemble_voting || '')
                   "
-                  download="wykres-url-{{ i + 1 }}-glosowanie-zespolowe.png"
-                >
-                  ⬇ Pobierz wykres
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="similar-samples-section"
-            *ngIf="urlAnalysis.similar_samples && urlAnalysis.similar_samples.length > 0"
-          >
-            <h4 class="section-title">
-              🔬 Podobne próbki ze zbioru danych ({{ urlAnalysis.similar_samples.length }})
-            </h4>
-            <div class="similar-samples-grid">
-              <div
-                *ngFor="let sample of urlAnalysis.similar_samples"
-                class="similar-sample-card"
-                [class.phishing]="sample.is_phishing"
-                [class.safe]="!sample.is_phishing"
-              >
-                <div class="sample-header">
-                  <span class="sample-label" [class.phishing]="sample.is_phishing">
-                    {{ sample.is_phishing ? '🚨 Phishing' : '✅ Bezpieczny' }}
-                  </span>
-                  <span class="sample-distance"> Odległość: {{ sample.distance.toFixed(4) }} </span>
+                                  download="wykres-url-{{ i + 1 }}-glosowanie-zespolowe.png"
+                                  >
+                                  ⬇ Pobierz wykres
+                                </a>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                      @if (urlAnalysis.similar_samples && urlAnalysis.similar_samples.length > 0) {
+                        <div
+                          class="similar-samples-section"
+                          >
+                          <h4 class="section-title">
+                            🔬 Podobne próbki ze zbioru danych ({{ urlAnalysis.similar_samples.length }})
+                          </h4>
+                          <div class="similar-samples-grid">
+                            @for (sample of urlAnalysis.similar_samples; track sample) {
+                              <div
+                                class="similar-sample-card"
+                                [class.phishing]="sample.is_phishing"
+                                [class.safe]="!sample.is_phishing"
+                                >
+                                <div class="sample-header">
+                                  <span class="sample-label" [class.phishing]="sample.is_phishing">
+                                    {{ sample.is_phishing ? '🚨 Phishing' : '✅ Bezpieczny' }}
+                                  </span>
+                                  <span class="sample-distance"> Odległość: {{ sample.distance.toFixed(4) }} </span>
+                                </div>
+                                <div class="sample-index">Indeks w zbiorze danych: #{{ sample.index }}</div>
+                                @if (sample.features) {
+                                  <div class="sample-features">
+                                    <strong>Kluczowe cechy:</strong>
+                                    <div class="feature-preview">
+                                      @for (feat of getTopSampleFeatures(sample.features); track feat) {
+                                        <span
+                                          class="mini-feature"
+                                          >
+                                          {{ feat.name }}: {{ formatFeatureValue(feat.value) }}
+                                        </span>
+                                      }
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                      @if (urlAnalysis.features && getFeatureEntries(urlAnalysis.features).length > 0) {
+                        <div
+                          class="features-section"
+                          >
+                          <h4 class="section-title">
+                            🔍 Wyekstrahowane cechy URL ({{ getFeatureEntries(urlAnalysis.features).length }})
+                          </h4>
+                          <div class="features-table-container">
+                            <table class="features-table">
+                              <thead>
+                                <tr>
+                                  <th>Nazwa cechy</th>
+                                  <th>Wartość</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                @for (feature of getFeatureEntries(urlAnalysis.features); track feature) {
+                                  <tr>
+                                    <td class="feature-name">{{ feature.name }}</td>
+                                    <td class="feature-value" [class.highlight]="feature.value !== 0">
+                                      {{ formatFeatureValue(feature.value) }}
+                                    </td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
-                <div class="sample-index">Indeks w zbiorze danych: #{{ sample.index }}</div>
-                <div class="sample-features" *ngIf="sample.features">
-                  <strong>Kluczowe cechy:</strong>
-                  <div class="feature-preview">
-                    <span
-                      *ngFor="let feat of getTopSampleFeatures(sample.features)"
-                      class="mini-feature"
-                    >
-                      {{ feat.name }}: {{ formatFeatureValue(feat.value) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              }
             </div>
-          </div>
-
-          <div
-            class="features-section"
-            *ngIf="urlAnalysis.features && getFeatureEntries(urlAnalysis.features).length > 0"
-          >
-            <h4 class="section-title">
-              🔍 Wyekstrahowane cechy URL ({{ getFeatureEntries(urlAnalysis.features).length }})
-            </h4>
-            <div class="features-table-container">
-              <table class="features-table">
-                <thead>
-                  <tr>
-                    <th>Nazwa cechy</th>
-                    <th>Wartość</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let feature of getFeatureEntries(urlAnalysis.features)">
-                    <td class="feature-name">{{ feature.name }}</td>
-                    <td class="feature-value" [class.highlight]="feature.value !== 0">
-                      {{ formatFeatureValue(feature.value) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          }
         </div>
       </div>
-    </div>
-  </div>
-</div>

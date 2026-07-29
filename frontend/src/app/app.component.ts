@@ -4,7 +4,6 @@ import { PhishingDetectorComponent } from './components/phishing-detector/phishi
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [RouterOutlet, PhishingDetectorComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',

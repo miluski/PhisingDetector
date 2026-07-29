@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS base
+FROM python:3.13.14-slim-bookworm@sha256:9d7f287598e1a5a978c015ee176d8216435aaf335ed69ac3c38dd1bbb10e8d64 AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -31,7 +31,6 @@ COPY services ./services
 COPY validators ./validators
 COPY data ./data
 COPY models ./models
-# Results are generated outside backend build context; model artifacts provide fallback metrics.
 RUN mkdir -p results/original/model_comparisons results/url_corpus/model_comparisons
 COPY utils ./utils
 

@@ -19,7 +19,6 @@ import { PhishingDetectionService } from '../../services/phishing-detection.serv
 
 @Component({
   selector: 'app-phishing-detector',
-  standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './phishing-detector.component.html',
   styleUrls: ['./phishing-detector.component.css'],

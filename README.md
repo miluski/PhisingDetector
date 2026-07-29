@@ -785,7 +785,7 @@ All network operations are protected:
 
 ### Requirements
 
-- Python 3.8+
+- Python 3.13
 - Node.js 18+
 - Angular CLI
 
@@ -1036,7 +1036,10 @@ backend/
 ├── notebooks/               # Tracked notebook sources and generators
 ├── certs/                   # HTTPS certificates
 ├── run.py                   # Entry point
-├── requirements.txt
+├── requirements.in          # Runtime dependency sources
+├── requirements.txt         # Locked runtime dependencies
+├── requirements-dev.in      # Development dependency sources
+├── requirements-dev.txt     # Locked development dependencies
 └── generate_certs.sh        # Certificate generator
 ```
 

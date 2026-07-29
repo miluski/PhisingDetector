@@ -10,7 +10,7 @@ Run all commands from the repository root with the project virtual
 environment:
 
 ```bash
-./.venv/bin/python -m pip install -r backend/requirements.txt
+./.venv/bin/python -m pip install -r backend/requirements-dev.txt
 ```
 
 Do not train with a different feature policy or a different network mode than
