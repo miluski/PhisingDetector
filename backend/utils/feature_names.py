@@ -120,7 +120,7 @@ FEATURE_NAMES = {
     'domain_google_index': 'Google: Czy domena zaindeksowana',
     'url_shortened': 'URL: Czy skrócony',
 
-    'phishing': 'Phishing (0=Bezpieczny, 1=Phishing)'
+    'phishing': 'Phishing (0=legalny URL, 1=phishing)'
 }
 
 FEATURE_NAMES_EN = {

@@ -5,6 +5,7 @@ import numpy as np
 from utils.figure_localization import english_matplotlib_copy
 from utils.notebook_plot_style import (
     CLASS_COLORS,
+    ACADEMIC_FONT_FAMILY,
     DATASET_COLORS,
     HEATMAP_CMAPS,
     MODEL_COLORS,
@@ -15,6 +16,7 @@ from utils.notebook_plot_style import (
     TRAIN_COLOR,
     VALIDATION_COLOR,
     classification_metric_sets,
+    apply_academic_style,
     clear_figure_titles,
     configure_axis_limit_ticks,
     configure_count_colorbar,
@@ -166,6 +168,22 @@ def test_figure_titles_are_removed_without_touching_axis_labels():
     assert axis.get_title() == ""
     assert figure._suptitle.get_text() == ""
     assert axis.get_xlabel() == "Horizontal axis"
+    plt.close(figure)
+
+
+def test_academic_style_uses_consistent_typography_and_restrained_axes():
+    from matplotlib import pyplot as plt
+
+    figure, axis = plt.subplots()
+    axis.plot([0, 1], [0, 1], label="Seria")
+    axis.legend()
+    apply_academic_style(figure)
+
+    assert axis.xaxis.label.get_fontfamily() == [ACADEMIC_FONT_FAMILY]
+    assert not axis.spines["top"].get_visible()
+    assert not axis.spines["right"].get_visible()
+    assert not axis.get_legend().get_frame_on()
+    assert figure.get_facecolor() == (1.0, 1.0, 1.0, 1.0)
     plt.close(figure)
 
 
@@ -332,14 +350,14 @@ def test_sample_probability_plot_shows_prediction_and_true_label():
     assert axis.get_xlabel() == "Prawdopodobieństwo przewidywane przez model [%]"
     assert axis.get_ylabel() == "Klasa"
     assert [label.get_text() for label in axis.get_yticklabels()] == [
-        "Brak phishingu", "Phishing — etykieta rzeczywista",
+        "Bezpieczny", "Phishing — etykieta rzeczywista",
     ]
     assert [bar.get_width() for bar in axis.patches] == [25.0, 75.0]
     assert [text.get_text() for text in axis.texts[:2]] == ["25,00%", "75,00%"]
     assert "Wynik: poprawny" in axis.texts[-1].get_text()
     assert [patch.get_linewidth() for patch in axis.patches] == [1.0, 3.0]
     assert [text.get_text() for text in axis.get_legend().get_texts()] == [
-        "Prawdopodobieństwo braku phishingu",
+        "Prawdopodobieństwo klasy „Bezpieczny”",
         "Prawdopodobieństwo phishingu",
         "Decyzja modelu: Phishing",
         "Próg decyzji phishing: 55,00%",
@@ -378,7 +396,7 @@ def test_sample_probability_plot_marks_incorrect_decision():
     )
 
     assert "Etykieta rzeczywista: Phishing" in axis.texts[-1].get_text()
-    assert "Decyzja modelu: Brak phishingu" in axis.texts[-1].get_text()
+    assert "Decyzja modelu: Bezpieczny" in axis.texts[-1].get_text()
     assert "Wynik: błędny" in axis.texts[-1].get_text()
     plt.close(figure)
 

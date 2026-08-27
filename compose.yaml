@@ -1,20 +1,50 @@
 services:
+  certificates:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: certificates
+    user: '${LOCAL_UID:-0}:${LOCAL_GID:-0}'
+    volumes:
+      - ./certs/localhost:/certs
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        if [ ! -s /certs/key.pem ] || [ ! -s /certs/cert.pem ]; then
+          umask 077;
+          openssl req -x509 -newkey rsa:4096 -nodes \
+          -keyout /certs/key.pem -out /certs/cert.pem -days 365 \
+          -subj /C=PL/O=PhishingDetector/CN=localhost \
+          -addext subjectAltName=DNS:localhost,IP:127.0.0.1;
+        fi
+    restart: 'no'
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: app
     container_name: phishing-backend
     environment:
       - PYTHONUNBUFFERED=1
-      - SSL_CERT_FILE=/app/certs/backend/cert.pem
-      - SSL_KEY_FILE=/app/certs/backend/key.pem
+      - SSL_CERT_FILE=/app/certs/cert.pem
+      - SSL_KEY_FILE=/app/certs/key.pem
       - HOST_BACKEND_PATH=${PWD}/backend
     volumes:
-      - ./certs/backend:/app/certs/backend:ro
+      - ./certs/localhost:/app/certs:ro
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - '5001:5001'
+    healthcheck:
+      test: ['CMD', 'curl', '-kfsS', 'https://localhost:5001/api/health']
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
     restart: unless-stopped
+    depends_on:
+      certificates:
+        condition: service_completed_successfully
 
   frontend:
     build:
@@ -23,15 +53,29 @@ services:
     container_name: phishing-frontend
     environment:
       - NODE_ENV=production
-      - SSL_CERT_FILE=/app/certs/frontend/cert.pem
-      - SSL_KEY_FILE=/app/certs/frontend/key.pem
+      - SSL_CERT_FILE=/app/certs/cert.pem
+      - SSL_KEY_FILE=/app/certs/key.pem
     volumes:
-      - ./certs/frontend:/app/certs/frontend:ro
+      - ./certs/localhost:/app/certs:ro
     ports:
       - '4000:4000'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('https').get({host:'localhost',port:4000,rejectUnauthorized:false},
+          response=>process.exit(response.statusCode===200?0:1))
+          .on('error',()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 5s
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 networks:
   default:

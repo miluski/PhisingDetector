@@ -1,6 +1,6 @@
 import csv
 
-from scripts.inject_benign_roots_into_splits import inject
+from backend.scripts.data_pipeline.inject_benign_roots_into_splits import inject
 
 
 HEADER = [

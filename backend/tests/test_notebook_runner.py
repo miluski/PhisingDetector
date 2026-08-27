@@ -5,7 +5,7 @@ from __future__ import annotations
 import nbformat
 import pytest
 
-from scripts import run_model_notebooks_parallel as runner
+from backend.scripts.reporting import run_model_notebooks_parallel as runner
 
 
 def test_failed_run_persists_completed_cell_outputs(tmp_path, monkeypatch) -> None:

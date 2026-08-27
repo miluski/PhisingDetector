@@ -2,7 +2,10 @@
 
 import pytest
 
-from utils.threshold_calibration import calibrate_threshold
+from utils.threshold_calibration import (
+    calibrate_threshold,
+    model_selection_score_from_probabilities,
+)
 
 
 def test_calibration_prefers_the_distribution_shift_safety_margin():
@@ -67,3 +70,20 @@ def test_calibration_rejects_invalid_validation_data(labels, scores):
     """Calibration requires aligned labels and both binary classes."""
     with pytest.raises(ValueError):
         calibrate_threshold(labels, scores)
+
+
+def test_probability_selection_score_combines_auc_recall_and_fpr():
+    score = model_selection_score_from_probabilities(
+        [0, 0, 1, 1], [0.1, 0.7, 0.4, 0.9],
+    )
+
+    assert score == pytest.approx(0.625)
+
+
+@pytest.mark.parametrize(
+    ("labels", "scores"),
+    [([], []), ([0, 1], [0.2]), ([0, 0], [0.1, 0.2]), ([0, 1], [0.1, float("nan")])],
+)
+def test_probability_selection_score_rejects_invalid_data(labels, scores):
+    with pytest.raises(ValueError):
+        model_selection_score_from_probabilities(labels, scores)

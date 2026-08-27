@@ -8,7 +8,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.retrain_url_corpus_all_models import metrics
+from backend.scripts.modeling.retrain_url_corpus_all_models import metrics
 
 
 def test_metrics_accepts_malformed_unicode_host() -> None:

@@ -153,11 +153,20 @@ def model_selection_score(estimator, X, y) -> float:
     performed afterwards on the held-out validation split.
     """
     probabilities = predict_probabilities(estimator, X)
-    predictions = (probabilities >= 0.5).astype(int)
-    fpr = false_positive_rate(y, predictions)
-    recall = float(recall_score(y, predictions, zero_division=0))
-    auc = float(roc_auc_score(y, probabilities)) if len(np.unique(y)) == 2 else 0.0
-    return auc + 0.25 * recall - 0.50 * fpr
+    return model_selection_score_from_probabilities(y, probabilities)
+
+
+def model_selection_score_from_probabilities(y, probabilities) -> float:
+    labels = np.asarray(y).astype(int)
+    scores = np.asarray(probabilities, dtype=float).reshape(-1)
+    if len(labels) != len(scores) or not len(labels):
+        raise ValueError("Labels and probabilities must have equal non-zero length")
+    if set(np.unique(labels)) != {0, 1} or not np.isfinite(scores).all():
+        raise ValueError("Selection data must contain two classes and finite scores")
+    predictions = (scores >= 0.5).astype(int)
+    recall = float(recall_score(labels, predictions, zero_division=0))
+    auc = float(roc_auc_score(labels, scores))
+    return auc + 0.25 * recall - 0.50 * false_positive_rate(labels, predictions)
 
 
 def predict_probabilities(estimator, X) -> np.ndarray:

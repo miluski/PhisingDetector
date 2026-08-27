@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.patches import Patch
 
 from utils.notebook_plot_style import (
     DATASET_COLORS,
@@ -163,45 +164,75 @@ def _measure_figures(results: pd.DataFrame):
 
 
 def plot_training_time_comparison(results: pd.DataFrame):
-    """Compare training times with a log-ratio scale so slow SVM hides nothing."""
-    pivot = results.pivot(
-        index="Algorytm klasyfikacji", columns="Zbiór danych", values="Czas uczenia (s)"
-    ).reindex(MODEL_FILES)
-    values = pivot.to_numpy(dtype=float)
-    positive = values[np.isfinite(values) & (values > 0.0)]
-    if positive.size == 0:
-        raise ValueError("Czasy uczenia muszą zawierać dodatnią wartość")
-    fastest = float(np.min(positive))
-    relative = np.log10(np.maximum(values, fastest) / fastest)
-
+    """Compare relative training-time changes with absolute-value labels."""
+    pivot = _training_time_pivot(results)
     figure, axis = plt.subplots(figsize=(11, 6))
-    positions = np.arange(len(pivot), dtype=float)
-    height = 0.34
-    for index, dataset in enumerate(DATASET_ORDER):
-        series = relative[:, index]
-        offset = (index - 0.5) * height
-        bars = axis.barh(
-            positions + offset, series, height,
-            color=DATASET_COLORS["full" if index == 0 else "optimized"],
-            label=dataset,
-        )
-        labels = [
-            f"{polish_number(float(raw), 2)} s ({raw / fastest:.1f}×)"
-            for raw in values[:, index]
-        ]
-        axis.bar_label(bars, labels=labels, padding=4, fontsize=8)
-
-    axis.set_yticks(positions, pivot.index)
-    axis.set_xlabel(
-        "Log₁₀ czasu uczenia względem najszybszego modelu (minimum = 1×)"
-    )
-    axis.set_ylabel("Algorytm klasyfikacji")
-    axis.set_xlim(0.0, max(float(np.nanmax(relative)) * 1.18, 1.0))
-    axis.legend(title="Wariant danych", frameon=False)
-    axis.grid(axis="x", alpha=0.3)
-    configure_axis_limit_ticks(axis, "x", floor=0.0, max_decimals=2)
+    _plot_training_time_panel(axis, pivot)
     figure.tight_layout(pad=1.2)
     return figure
+
+
+def _training_time_pivot(results: pd.DataFrame) -> pd.DataFrame:
+    """Return validated training times in stable display order."""
+    pivot = results.pivot(
+        index="Algorytm klasyfikacji", columns="Zbiór danych", values="Czas uczenia (s)"
+    ).reindex(index=MODEL_FILES, columns=DATASET_ORDER)
+    values = pivot.to_numpy(dtype=float)
+    if not np.isfinite(values).all() or (values <= 0.0).any():
+        raise ValueError("Czasy uczenia muszą być skończone i dodatnie")
+    return pivot
+
+
+def _plot_training_time_panel(axis, pivot: pd.DataFrame) -> None:
+    """Draw percentage reduction and retain exact training times."""
+    reduction = _training_time_reduction(pivot)
+    colors = [DATASET_COLORS["full"] if value >= 0 else SECONDARY_COLOR
+              for value in reduction]
+    bars = axis.barh(pivot.index, reduction, color=colors)
+    _label_training_time_bars(
+        axis, bars, _training_time_labels(pivot, reduction), reduction,
+    )
+    axis.axvline(0.0, color="#25344F", linewidth=0.9)
+    axis.set_xlabel("Skrócenie czasu uczenia po redukcji cech [%]")
+    axis.set_ylabel("Algorytm klasyfikacji")
+    axis.set_xlim(-5.0, 100.0)
+    axis.set_xticks(np.arange(0.0, 101.0, 20.0))
+    axis.legend(handles=_training_time_legend(), frameon=False)
+    axis.grid(axis="x", alpha=0.3)
+
+
+def _training_time_reduction(pivot: pd.DataFrame) -> np.ndarray:
+    """Return percentage reduction from full to optimized features."""
+    full = pivot[DATASET_ORDER[0]].to_numpy(dtype=float)
+    optimized = pivot[DATASET_ORDER[1]].to_numpy(dtype=float)
+    return (full - optimized) / full * 100.0
+
+
+def _training_time_labels(pivot, reduction) -> list[str]:
+    """Combine relative change with full and optimized times."""
+    full = pivot[DATASET_ORDER[0]].to_numpy(dtype=float)
+    optimized = pivot[DATASET_ORDER[1]].to_numpy(dtype=float)
+    return [
+        f"{polish_number(change, 2)}% ({polish_number(before, 2)} → "
+        f"{polish_number(after, 2)} s)"
+        for change, before, after in zip(reduction, full, optimized, strict=True)
+    ]
+
+
+def _label_training_time_bars(axis, bars, labels, reduction) -> None:
+    """Place change labels to the right of the zero line."""
+    for bar, label, change in zip(bars, labels, reduction, strict=True):
+        position = float(change) + 0.8 if change >= 0 else 0.8
+        axis.text(position, bar.get_y() + bar.get_height() / 2, label,
+                  ha="left", va="center", fontsize=9)
+
+
+def _training_time_legend() -> list[Patch]:
+    """Explain the direction encoded by bar color."""
+    return [
+        Patch(facecolor=DATASET_COLORS["full"], label="Skrócenie czasu"),
+        Patch(facecolor=SECONDARY_COLOR, label="Wydłużenie czasu"),
+    ]
 
 
 def _save_named_figure(
@@ -231,6 +262,7 @@ def plot_quality_comparison(results: pd.DataFrame, dataset: str):
     matrix = _dataset_rows(results, dataset).set_index(
         "Algorytm klasyfikacji"
     )[list(QUALITY_COLUMNS)]
+    matrix = matrix.rename(columns={"AUC-ROC": "ROC-AUC"})
     figure, axis = plt.subplots(figsize=(10, 6))
     sns.heatmap(
         matrix, annot=True, fmt=".4f", cmap="Blues", vmin=0.0, vmax=1.0,

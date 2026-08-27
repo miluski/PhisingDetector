@@ -1,6 +1,6 @@
 import csv
 
-from scripts.reuse_url_feature_rows import reuse
+from backend.scripts.data_pipeline.reuse_url_feature_rows import reuse
 
 
 RAW_HEADER = ["source_index", "url", "label"]

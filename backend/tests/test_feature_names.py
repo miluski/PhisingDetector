@@ -11,7 +11,11 @@ from utils.feature_names import (
     FEATURE_NAMES_EN,
     get_readable_name,
 )
-from utils.figure_localization import english_plotly_copy, translate_figure_text
+from utils.figure_localization import (
+    apply_academic_plotly_style,
+    english_plotly_copy,
+    translate_figure_text,
+)
 from utils.notebook_plot_style import (
     METRIC_LABELS,
     MODEL_COLORS,
@@ -97,6 +101,18 @@ def test_plotly_copy_translates_nested_feature_labels():
     )
 
 
+def test_academic_plotly_style_remains_valid_after_translation():
+    """Preserve valid CSS colors in localized academic figures."""
+    import plotly.graph_objects as go
+
+    figure = go.Figure(go.Bar(x=[1], y=["Legalny URL"]))
+    apply_academic_plotly_style(figure)
+    translated = english_plotly_copy(figure)
+
+    assert translated.layout.font.family == "DejaVu Serif"
+    assert translated.layout.legend.bgcolor == "rgba(0, 0, 0, 0)"
+
+
 def test_standard_deviation_legend_is_translated():
     """Translate uncertainty-band terminology used in learning curves."""
     assert translate_figure_text("± odchylenie standardowe") == (
@@ -144,10 +160,27 @@ def test_runtime_comparison_labels_have_expected_english_wording():
     )
 
 
+def test_benchmark_algorithm_labels_are_fully_localized():
+    assert translate_figure_text("Regresja logistyczna") == "Logistic regression"
+    assert translate_figure_text("Las losowy") == "Random forest"
+    assert translate_figure_text("Maszyna wektorów nośnych (SVM)") == (
+        "Support vector machine (SVM)"
+    )
+    assert translate_figure_text("Perceptron wielowarstwowy (MLP)") == (
+        "Multilayer perceptron (MLP)"
+    )
+    assert translate_figure_text("Spełnia wszystkie kryteria") == "Meets all criteria"
+    assert translate_figure_text("Próg opóźnienia") == "Latency threshold"
+    assert translate_figure_text(
+        "Wariant po selekcji cech (48 z 110)"
+    ) == "Feature-selected variant (48 of 110)"
+
+
 def _plot_sources():
     """Return shared plot source and code from canonical notebooks."""
     backend = Path(__file__).resolve().parents[1]
     yield (backend / "utils" / "notebook_plot_style.py").read_text()
+    yield (backend / "utils" / "benchmark_plots.py").read_text()
     for path in sorted((backend / "notebooks" / "original").glob("*.ipynb")):
         notebook = json.loads(path.read_text(encoding="utf-8"))
         for cell in notebook["cells"]:

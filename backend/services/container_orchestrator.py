@@ -54,7 +54,7 @@ class DockerSandboxClient:
             raise RuntimeError('Docker daemon is not accessible from the backend container.')
 
     def _get_dockerfile_path(self) -> Path:
-        return Path("/app/Dockerfile.sandbox")
+        return Path("/app/Dockerfile")
 
     def _get_app_path(self) -> Path:
         return Path("/app")
@@ -79,6 +79,7 @@ class DockerSandboxClient:
             path=str(context_path),
             dockerfile=str(dockerfile_path.name),
             tag=self.image_name,
+            target="sandbox",
             rm=True
         )
         logger.info(f"✅ Successfully built sandbox image: {self.image_name}")

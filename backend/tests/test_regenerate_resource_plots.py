@@ -1,6 +1,6 @@
 import pandas as pd
 
-from scripts.regenerate_resource_plots import regenerate_scope
+from backend.scripts.reporting.regenerate_resource_plots import regenerate_scope
 
 
 def test_cached_resource_trace_regenerates_bilingual_cpu_and_ram(tmp_path):

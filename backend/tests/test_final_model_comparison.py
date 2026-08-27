@@ -11,6 +11,7 @@ from utils.final_model_comparison import (
     missing_final_model_results,
     plot_error_comparison,
     plot_quality_comparison,
+    plot_training_time_comparison,
     plot_variant_measure,
 )
 
@@ -120,6 +121,7 @@ def test_final_comparison_plots_have_complete_scientific_labels(tmp_path):
     ]
 
     assert figures[0].axes[0].get_xlabel() == "Miara jakości klasyfikacji"
+    assert figures[0].axes[0].get_xticklabels()[-1].get_text() == "ROC-AUC"
     assert figures[0].axes[-1].get_ylabel() == "Wartość miary jakości klasyfikacji"
     assert figures[0].axes[0].collections[0].norm.vmin == 0.0
     assert figures[0].axes[0].collections[0].norm.vmax == 1.0
@@ -155,3 +157,23 @@ def test_generation_saves_one_table_and_bilingual_figures(tmp_path):
                for path in paths)
     assert plt.get_fignums() == [existing.number]
     plt.close(existing)
+
+
+def test_training_time_uses_one_linear_axis(tmp_path):
+    from matplotlib import pyplot as plt
+
+    input_dir = tmp_path / "model_comparisons"
+    _write_model_results(input_dir)
+    figure = plot_training_time_comparison(load_final_model_results(input_dir))
+
+    assert len(figure.axes) == 1
+    assert all(axis.get_xscale() == "linear" for axis in figure.axes)
+    assert figure.axes[0].get_xlim()[0] < 0.0
+    assert len(figure.axes[0].patches) == 5
+    assert figure.axes[0].get_xlabel() == (
+        "Skrócenie czasu uczenia po redukcji cech [%]"
+    )
+    labels = {label.get_text() for label in figure.axes[0].get_yticklabels()}
+    assert labels == set(MODEL_FILES)
+    assert all("→" in label.get_text() for label in figure.axes[0].texts)
+    plt.close(figure)

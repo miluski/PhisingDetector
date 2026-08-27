@@ -29,7 +29,7 @@ def close_figures():
 def test_class_distribution_uses_semantic_colors_and_legend() -> None:
     """Keep non-phishing and phishing colors stable across notebooks."""
     figure = plot_class_distribution(
-        ["Brak phishingu", "Phishing"], [46_400, 24_517], percentage=False,
+        ["Legalny URL", "Phishing"], [46_400, 24_517], percentage=False,
     )
     axis = figure.axes[0]
     colors = [to_hex(patch.get_facecolor()) for patch in axis.patches]

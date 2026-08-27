@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.audit_benign_category_coverage import validate
+from backend.scripts.data_pipeline.audit_benign_category_coverage import validate
 
 
 def _write_split(path, rows):

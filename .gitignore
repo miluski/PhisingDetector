@@ -47,7 +47,6 @@ typings/
 # Generated experiment artifacts
 backend/models/
 results/
-backend/archive/
 backend/static/plots/
 backend/static/statistical_analysis/
 backend/static/test/

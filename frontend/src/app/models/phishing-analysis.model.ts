@@ -17,8 +17,8 @@ export const DATASET_FEATURE_COUNTS: Record<DatasetType, Record<AnalysisMode, nu
     full: 111,
   },
   url_corpus: {
-    optimized: 38,
-    full: 104,
+    optimized: 47,
+    full: 110,
   },
 };
 

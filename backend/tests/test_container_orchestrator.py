@@ -41,6 +41,14 @@ class _WarmContainers:
         return self.container
 
 
+class _Images:
+    def __init__(self):
+        self.build_calls = []
+
+    def build(self, **kwargs):
+        self.build_calls.append(kwargs)
+
+
 def _make_warm_client():
     docker_client = SimpleNamespace(containers=_WarmContainers())
     client = DockerSandboxClient.__new__(DockerSandboxClient)
@@ -81,3 +89,23 @@ def test_docker_client_reuses_warm_container_between_requests():
     client.cleanup_all()
     assert docker_client.containers.container.stop_calls == 1
     assert docker_client.containers.container.remove_calls == 1
+
+
+def test_sandbox_build_uses_shared_dockerfile_target(tmp_path):
+    dockerfile = tmp_path / "Dockerfile"
+    dockerfile.write_text("FROM scratch")
+    images = _Images()
+    client = DockerSandboxClient.__new__(DockerSandboxClient)
+    client.client = SimpleNamespace(images=images)
+    client.image_name = "sandbox"
+
+    client._build_image(dockerfile)
+    client.client = None
+
+    assert images.build_calls == [{
+        "path": str(tmp_path),
+        "dockerfile": "Dockerfile",
+        "tag": "sandbox",
+        "target": "sandbox",
+        "rm": True,
+    }]

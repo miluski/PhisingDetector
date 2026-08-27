@@ -12,6 +12,7 @@ from matplotlib.patches import Patch
 
 from utils.notebook_plot_style import (
     CLASS_COLORS,
+    CLASS_LABELS,
     HEATMAP_CMAPS,
     MUTED_NEUTRAL_COLOR,
     configure_axis_limit_ticks,
@@ -131,8 +132,8 @@ def plot_imbalance_confusion_matrix(matrix, maximum: float):
     sns.heatmap(
         matrix, annot=True, fmt="d", cmap=HEATMAP_CMAPS["full"],
         vmin=0.0, vmax=maximum, ax=axis,
-        xticklabels=["Brak phishingu", "Phishing"],
-        yticklabels=["Brak phishingu", "Phishing"],
+        xticklabels=CLASS_LABELS,
+        yticklabels=CLASS_LABELS,
         cbar_kws={"label": "Liczba próbek"},
     )
     configure_count_colorbar(axis)

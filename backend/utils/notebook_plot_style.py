@@ -14,6 +14,7 @@ import numpy as np
 import seaborn as sns
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from matplotlib.text import Text
 from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, MaxNLocator
 from sklearn.metrics import precision_recall_curve, roc_curve
 
@@ -42,6 +43,9 @@ QUATERNARY_COLOR = "#3366CC"
 FIFTH_COLOR = "#66CCEE"
 NEUTRAL_COLOR = "#555555"
 MUTED_NEUTRAL_COLOR = "#777777"
+ACADEMIC_FONT_FAMILY = "DejaVu Serif"
+ACADEMIC_TEXT_COLOR = "#25344F"
+ACADEMIC_GRID_COLOR = "#D7DCE2"
 
 DATASET_COLORS = {"full": PRIMARY_COLOR, "optimized": SECONDARY_COLOR}
 TRAIN_COLOR = PRIMARY_COLOR
@@ -87,6 +91,8 @@ CLASS_COLORS = {
     "safe": PRIMARY_COLOR,
     "phishing": SECONDARY_COLOR,
 }
+
+CLASS_LABELS = ("Bezpieczny", "Phishing")
 
 MODEL_COLORS = {
     "Regresja Logistyczna": PRIMARY_COLOR,
@@ -229,6 +235,7 @@ def save_comparison_figure(
 ) -> Path:
     """Save Polish and English variants of a comparison figure."""
     output_path = Path(output_path)
+    apply_academic_style(figure)
     clear_figure_titles(figure)
     if path_language(output_path):
         return _save_matplotlib_figure(figure, output_path, dpi)
@@ -238,6 +245,32 @@ def save_comparison_figure(
         dpi,
         display_in_notebook,
     )
+
+
+def apply_academic_style(figure) -> None:
+    """Apply restrained publication styling without changing plotted data."""
+    figure.set_facecolor("white")
+    for text in figure.findobj(match=Text):
+        text.set_fontfamily(ACADEMIC_FONT_FAMILY)
+    for axis in figure.axes:
+        _style_academic_axis(axis)
+
+
+def _style_academic_axis(axis) -> None:
+    """Style one axis for consistent thesis-ready export."""
+    axis.set_facecolor("white")
+    axis.tick_params(colors=ACADEMIC_TEXT_COLOR, labelsize=10, direction="out")
+    axis.xaxis.label.set_color(ACADEMIC_TEXT_COLOR)
+    axis.yaxis.label.set_color(ACADEMIC_TEXT_COLOR)
+    for side in ("top", "right"):
+        axis.spines[side].set_visible(False)
+    for side in ("bottom", "left"):
+        axis.spines[side].set_color(ACADEMIC_TEXT_COLOR)
+    for line in (*axis.get_xgridlines(), *axis.get_ygridlines()):
+        line.set_color(ACADEMIC_GRID_COLOR)
+        line.set_linewidth(0.6)
+    if axis.get_legend() is not None:
+        axis.get_legend().set_frame_on(False)
 
 
 def _save_bilingual_figure(
@@ -893,8 +926,8 @@ def plot_confusion_matrix(confusion_matrix, dataset_name: str):
         annot=True,
         fmt="d",
         cmap=HEATMAP_CMAPS[key],
-        xticklabels=["Brak phishingu", "Phishing"],
-        yticklabels=["Brak phishingu", "Phishing"],
+        xticklabels=CLASS_LABELS,
+        yticklabels=CLASS_LABELS,
         ax=axis,
         annot_kws={"size": 14},
         cbar_kws={"label": "Liczba próbek"},
@@ -1815,7 +1848,7 @@ def plot_probability_bars(axis, probabilities, *, sample_label: str) -> None:
     if total <= 0.0:
         raise ValueError("Class probabilities or votes must have a positive sum")
     values = values / total * 100.0
-    labels = ["Brak phishingu", "Phishing"]
+    labels = list(CLASS_LABELS)
     colors = [CLASS_COLORS["safe"], CLASS_COLORS["phishing"]]
     bars = axis.barh(labels, values, color=colors, alpha=0.85)
     axis.set_xlim(0.0, 100.0)
@@ -1955,14 +1988,14 @@ def _sample_probability_text(language):
 
 def _polish_sample_probability_text():
     """Return Polish one-sample probability labels."""
-    classes = ["Brak phishingu", "Phishing"]
+    classes = list(CLASS_LABELS)
     return {
         "classes": classes,
         "number": lambda value: f"{polish_number(value, 2)}%",
         "x_label": "Prawdopodobieństwo przewidywane przez model [%]",
         "y_label": "Klasa",
         "actual_marker": "etykieta rzeczywista",
-        "safe_probability": "Prawdopodobieństwo braku phishingu",
+        "safe_probability": "Prawdopodobieństwo klasy „Bezpieczny”",
         "phishing_probability": "Prawdopodobieństwo phishingu",
         "decision": lambda name: f"Decyzja modelu: {name}",
         "threshold": lambda value: f"Próg decyzji phishing: {value}",

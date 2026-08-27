@@ -4,7 +4,7 @@ import pickle
 
 import pandas as pd
 
-from scripts.recheck_url_corpus_models import (
+from backend.scripts.modeling.recheck_url_corpus_models import (
     align_features,
     cached_features_are_compatible,
     load_payload,

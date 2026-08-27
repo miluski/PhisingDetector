@@ -47,7 +47,7 @@ POLISH_TO_ENGLISH = {
     "błędny": "incorrect",
     "Waga ujemna": "Negative weight",
     "Waga dodatnia": "Positive weight",
-    "brak phishingu": "non-phishing",
+    "legalny URL": "legitimate URL",
     "Funkcja aktywacji": "Activation function",
     "Funkcja decyzyjna": "Decision function",
     "Hiperpłaszczyzna": "Hyperplane",
@@ -55,6 +55,9 @@ POLISH_TO_ENGLISH = {
     "Kombinacja liniowa": "Linear combination",
     "Mierzona charakterystyka modelu": "Measured model characteristic",
     "Regresja Logistyczna": "Logistic Regression",
+    "Maszyna wektorów nośnych (SVM)": "Support vector machine (SVM)",
+    "Perceptron wielowarstwowy (MLP)": "Multilayer perceptron (MLP)",
+    "Las losowy": "Random forest",
     "Rozmiar warstw ukrytych": "Hidden layer sizes",
     "Liczba epok uczenia": "Number of training epochs",
     "Parametr gamma": "Gamma parameter",
@@ -173,7 +176,7 @@ POLISH_TO_ENGLISH = {
     "Zbiór użyty do obliczenia miary": "Dataset used to calculate the metric",
     "Wartość miary jakości klasyfikacji": "Classification metric value",
     "Współczynnik błędu klasyfikacji": "Classification error rate",
-    "Prawdopodobieństwo braku phishingu": "Non-phishing probability",
+    "Prawdopodobieństwo klasy „Legalny URL”": "Legitimate URL probability",
     "Prawdopodobieństwo phishingu": "Phishing probability",
     "Rzeczywista etykieta próbki": "Actual sample label",
     "Suma |wag| pierwszej warstwy": "Sum of first-layer absolute weights",
@@ -208,7 +211,7 @@ POLISH_TO_ENGLISH = {
     "Klasa przewidziana": "Predicted class",
     "Klasa rzeczywista": "Actual class",
     "Błędnie sklasyfikowane": "Misclassified",
-    "Brak phishingu": "Non-phishing",
+    "Legalny URL": "Legitimate URL",
     "Dokładność": "Accuracy",
     "Precyzja": "Precision",
     "Czułość": "Recall",
@@ -221,6 +224,11 @@ POLISH_TO_ENGLISH = {
     "Średnia": "Mean",
     "Czas uczenia modelu [s]": "Model training time [s]",
     "Czas uczenia [s]": "Training time [s]",
+    "Skrócenie czasu uczenia po redukcji cech [%]": (
+        "Training-time reduction after feature reduction [%]"
+    ),
+    "Skrócenie czasu": "Shorter training time",
+    "Wydłużenie czasu": "Longer training time",
     "Średnie wykorzystanie procesora [%]": "Mean CPU utilization [%]",
     "Średnie wykorzystanie pamięci RAM [GB]": "Mean RAM utilization [GB]",
     "Wartość miary błędu [%]": "Error metric value [%]",
@@ -228,6 +236,135 @@ POLISH_TO_ENGLISH = {
     "Regresja logistyczna": "Logistic regression",
     "skala logarytmiczna": "logarithmic scale",
     "Czas [s]": "Time [s]",
+    "Czas predykcji [ms/URL]": "Prediction time [ms/URL]",
+    "Czas deserializacji P95 [ms]": "Deserialization P95 [ms]",
+    "Opóźnienie P95 [ms/adres URL]": "P95 latency [ms/URL]",
+    "Porównanie wariantów cech": "Feature variant comparison",
+    "Tylko klasyfikator": "Classifier only",
+    "Aktywne artefakty aplikacji": "Active application artifacts",
+    "Algorytm i wariant cech": "Algorithm and feature variant",
+    "Algorytm —": "Algorithm —",
+    "Algorytm aktywnej aplikacji": "Active application algorithm",
+    "Wariant cech": "Feature variant",
+    "Algorytm klasyfikacji i wariant cech": (
+        "Classification algorithm and feature variant"
+    ),
+    "Wartość metryki": "Metric value",
+    "Wewnętrzny − zewnętrzny": "Internal − external",
+    "Różnica: zbiór wewnętrzny − zbiór zewnętrzny": (
+        "Difference: internal dataset − external dataset"
+    ),
+    "Opóźnienie P95 [ms/adres URL] — skala logarytmiczna": (
+        "P95 latency [ms/URL] — logarithmic scale"
+    ),
+    "Opóźnienie P95 — tylko klasyfikator [ms/adres URL]": (
+        "P95 latency — classifier only [ms/URL]"
+    ),
+    "Opóźnienie P95 — skalowanie i klasyfikator [ms/adres URL]": (
+        "P95 latency — scaling and classifier [ms/URL]"
+    ),
+    "Opóźnienie P95 klasyfikatora [ms]": "Classifier P95 latency [ms]",
+    "Opóźnienie P95 pełnego przepływu API [ms]": (
+        "End-to-end API P95 latency [ms]"
+    ),
+    "Zbiór Original": "Original dataset",
+    "Zbiór URL Corpus": "URL Corpus dataset",
+    "Próg 0,80": "Threshold 0.80",
+    "próg jakości: 0,80": "quality threshold: 0.80",
+    "Spełnia wszystkie kryteria": "Meets all criteria",
+    "Nie spełnia co najmniej jednego kryterium": "Fails at least one criterion",
+    "Spełnia kryteria": "Meets criteria",
+    "Nie spełnia kryteriów": "Fails criteria",
+    "Próg opóźnienia": "Latency threshold",
+    "artefakty do 10 MB": "artifacts up to 10 MB",
+    "artefakty powyżej 10 MB": "artifacts above 10 MB",
+    "poniżej 1 MB": "below 1 MB",
+    "od 1 do 10 MB": "from 1 to 10 MB",
+    "powyżej 10 MB": "above 10 MB",
+    "brak artefaktu": "artifact unavailable",
+    "Wariant lub rodzina artefaktu": "Artifact variant or family",
+    "Original — pełny wariant (111 cech)": (
+        "Original — full variant (111 features)"
+    ),
+    "Original — po optymalizacji (74 z 111 cech)": (
+        "Original — optimized (74 of 111 features)"
+    ),
+    "URL Corpus — pełny wariant (110 cech)": (
+        "URL Corpus — full variant (110 features)"
+    ),
+    "URL Corpus — po selekcji (48 z 110 cech)": (
+        "URL Corpus — feature-selected (48 of 110 features)"
+    ),
+    "Original — aplikacja (74 z 111 cech)": (
+        "Original — application (74 of 111 features)"
+    ),
+    "URL Corpus — aplikacja (48 z 110 cech)": (
+        "URL Corpus — application (48 of 110 features)"
+    ),
+    "Original\nPełny zestaw cech\n111 cech": (
+        "Original\nFull feature set\n111 features"
+    ),
+    "Original\nPo optymalizacji\n74 z 111 cech": (
+        "Original\nAfter optimization\n74 of 111 features"
+    ),
+    "URL Corpus\nPełny zestaw cech\n110 cech": (
+        "URL Corpus\nFull feature set\n110 features"
+    ),
+    "URL Corpus\nPo selekcji cech\n48 z 110 cech": (
+        "URL Corpus\nAfter feature selection\n48 of 110 features"
+    ),
+    "Original\nAplikacja\n74 z 111 cech": (
+        "Original\nApplication\n74 of 111 features"
+    ),
+    "URL Corpus\nAplikacja\n48 z 110 cech": (
+        "URL Corpus\nApplication\n48 of 110 features"
+    ),
+    "Wybrany": "Selected",
+    "Klasyfikator": "Classifier",
+    "Pełne żądanie aplikacji": "Full application request",
+    "Skalowanie i klasyfikator": "Scaling and classifier",
+    "Zbiór wewnętrzny": "Internal dataset",
+    "Zbiór zewnętrzny": "External dataset",
+    "Zmiana metryki: wewnętrzny minus zewnętrzny": (
+        "Metric change: internal minus external"
+    ),
+    "Opóźnienie P95 [ms]": "P95 latency [ms]",
+    "Klasyfikacja w aplikacji": "Application classification",
+    "API end-to-end": "End-to-end API",
+    "Rozmiar artefaktu [MB]": "Artifact size [MB]",
+    "Liczba elementów struktury": "Number of structural elements",
+    "Pełny wariant cech": "Full feature variant",
+    "Wybrany wariant cech": "Selected feature variant",
+    "Wariant po selekcji cech (48 z 110)": (
+        "Feature-selected variant (48 of 110)"
+    ),
+    "Zoptymalizowany wariant cech": "Optimized feature variant",
+    "Opóźnienie P95 [ms/URL] — skala logarytmiczna": (
+        "P95 latency [ms/URL] — logarithmic scale"
+    ),
+    "Czas deserializacji P95 [ms] — skala logarytmiczna": (
+        "Deserialization P95 [ms] — logarithmic scale"
+    ),
+    "Rozmiar artefaktu [MB] — skala logarytmiczna": (
+        "Artifact size [MB] — logarithmic scale"
+    ),
+    "Metryka na zbiorze zewnętrznym": "Metric on external dataset",
+    "Różnica: wewnętrzny − zewnętrzny": "Difference: internal − external",
+    "Metryka na wydzielonym zbiorze testowym": "Metric on held-out test dataset",
+    "Odsetek fałszywych alarmów (FPR) — mniej oznacza lepiej": (
+        "False-positive rate (FPR) — lower is better"
+    ),
+    "Zoptymalizowany − pełny": "Optimized − full",
+    "Metryka jakości": "Quality metric",
+    "P95 klasyfikatora [ms]": "Classifier P95 [ms]",
+    "P95 czasu klasyfikacji [ms]": "Classifier time P95 [ms]",
+    "P95 czasu pełnego żądania API [ms]": "End-to-end API time P95 [ms]",
+    "P95 API end-to-end [ms]": "End-to-end API P95 [ms]",
+    "Aktywny algorytm": "Active algorithm",
+    "Miara F1 — więcej oznacza lepiej": "F1 score — higher is better",
+    "FPR — mniej oznacza lepiej": "FPR — lower is better",
+    "Original —": "Original —",
+    "URL Corpus —": "URL Corpus —",
     "Epoka": "Epoch",
     "Próbka": "Sample",
 }
@@ -335,6 +472,7 @@ def save_bilingual_plotly_figure(
     scale: int = 2,
 ) -> dict[str, tuple[Path, Path]]:
     """Save and display Polish and English variants of a Plotly figure."""
+    apply_academic_plotly_style(figure)
     english_figure = english_plotly_copy(figure)
     polish_paths = _save_plotly_variant(
         figure, png_dir, html_dir, filename, "pl", width, height, scale
@@ -345,6 +483,21 @@ def save_bilingual_plotly_figure(
     _remove_legacy_plotly_files(png_dir, html_dir, filename)
     _show_plotly_variants(figure, english_figure)
     return {"pl": polish_paths, "eng": english_paths}
+
+
+def apply_academic_plotly_style(figure: Any) -> None:
+    """Apply restrained publication styling to one Plotly figure."""
+    figure.update_layout(
+        paper_bgcolor="white", plot_bgcolor="white",
+        font={"family": "DejaVu Serif", "size": 16, "color": "#25344F"},
+        legend={"bgcolor": "rgba(0, 0, 0, 0)"},
+    )
+    axis_style = {
+        "showline": True, "linecolor": "#25344F", "linewidth": 1,
+        "ticks": "outside", "gridcolor": "#D7DCE2", "zeroline": False,
+    }
+    figure.update_xaxes(**axis_style)
+    figure.update_yaxes(**axis_style)
 
 
 def _show_plotly_variants(polish_figure: Any, english_figure: Any) -> None:

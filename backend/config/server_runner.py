@@ -37,7 +37,7 @@ class ServerRunner:
         print(f"Checked: {cert_file}")
         print(f"Checked: {key_file}")
         print("")
-        print("Run './generate_certs.sh' to create certificates")
+        print("Run 'python scripts/setup.py --prepare-only' from project root")
         print("")
         print(f"Starting without HTTPS at: http://localhost:{self.port}")
         print("")

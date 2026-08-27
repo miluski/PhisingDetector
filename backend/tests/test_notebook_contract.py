@@ -10,11 +10,12 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from scripts.prepare_url_corpus_notebooks import (
+from backend.scripts.reporting.prepare_url_corpus_notebooks import (
     SOURCE_NOTEBOOKS,
     preserve_matching_runtime_state,
     render_notebook,
 )
+from backend.scripts.reporting.normalize_notebook_labels import normalize_source
 from utils.notebook_plot_style import scientific_scale
 
 
@@ -24,19 +25,39 @@ PHASE_PLOT_PATH = BACKEND_ROOT / "utils" / "phase_testing_plots.py"
 
 
 def model_notebooks():
-    originals = sorted((NOTEBOOK_ROOT / "original").glob("[1-6]*.ipynb"))
-    url_corpus = sorted((NOTEBOOK_ROOT / "url_corpus").glob("[1-6]*.ipynb"))
-    return originals + url_corpus
+    return [
+        path for path in all_notebooks()
+        if 1 <= notebook_number(path) <= 6
+    ]
 
 
 def all_notebooks():
-    originals = sorted((NOTEBOOK_ROOT / "original").glob("[0-7]*.ipynb"))
-    url_corpus = sorted((NOTEBOOK_ROOT / "url_corpus").glob("[0-7]*.ipynb"))
-    return originals + url_corpus
+    paths = [
+        *(NOTEBOOK_ROOT / "original").glob("*.ipynb"),
+        *(NOTEBOOK_ROOT / "url_corpus").glob("*.ipynb"),
+    ]
+    return sorted((path for path in paths if path.stem.split("_", 1)[0].isdigit()), key=str)
+
+
+def notebook_number(path: Path) -> int:
+    return int(path.stem.split("_", 1)[0])
+
+
+def numbered_notebooks(directory: str, minimum: int, maximum: int):
+    paths = (NOTEBOOK_ROOT / directory).glob("*.ipynb")
+    return sorted(
+        path for path in paths
+        if path.stem.split("_", 1)[0].isdigit()
+        and minimum <= notebook_number(path) <= maximum
+    )
+
+
+def training_notebooks(directory: str):
+    return numbered_notebooks(directory, 1, 5)
 
 
 def test_url_corpus_notebooks_use_current_feature_directory():
-    for path in sorted((NOTEBOOK_ROOT / "url_corpus").glob("[0-7]*.ipynb")):
+    for path in sorted((NOTEBOOK_ROOT / "url_corpus").glob("*.ipynb")):
         _, code = notebook_source(path)
         assert "quality_large_splits" not in code, path.name
         if "load_split_frames(" in code:
@@ -194,6 +215,9 @@ def test_mlp_uses_explicit_validation_and_inference_metrics():
         assert "epoch_end_validation_accuracy" in code
         assert "label='Zbiór walidacyjny'" in code
         assert "Zbiór walidacyjny — binarna entropia krzyżowa" not in code
+        assert "model_selection_score_from_probabilities" in code
+        assert "if selection_score > best_overall_score:" in code
+        assert "best_overall_score = val_auc" not in code
 
 
 @pytest.mark.parametrize("path", all_notebooks(), ids=lambda path: path.name)
@@ -393,14 +417,14 @@ def test_no_stale_hardcoded_feature_counts():
 
 
 def test_original_model_notebooks_store_dynamic_feature_counts():
-    for path in sorted((NOTEBOOK_ROOT / "original").glob("[1-5]*.ipynb")):
+    for path in training_notebooks("original"):
         _, code = notebook_source(path)
         assert "'feature_count': X.shape[1]" in code, path.name
 
 
 def test_prediction_figures_show_one_labelled_test_sample_each():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "sample_positions =" in code
             assert "plot_probability_figure(" not in code
@@ -437,7 +461,7 @@ def test_sample_predictions_replace_obsolete_probability_figures():
         "5_": "mlp",
     }
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             prefix = prefixes[path.name[:2]]
             assert (
@@ -476,7 +500,7 @@ def test_mlp_keeps_metric_name_on_axis_and_not_in_legend():
 
 def test_learning_curves_distinguish_cv_validation_from_final_testing():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             notebook, code = notebook_source(path)
             markdown = notebook_markdown(notebook)
             assert "x_label='Liczba próbek'" in code
@@ -496,7 +520,7 @@ def test_learning_curves_distinguish_cv_validation_from_final_testing():
 
 def test_every_model_has_comparable_cross_validated_bce_curve():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "y_label='Binarna entropia krzyżowa'" in code, path.name
             assert "(log loss)" not in code, path.name
@@ -524,7 +548,7 @@ def test_logistic_regression_regularization_curve_uses_linear_scale():
 
 def test_every_model_has_comparable_classification_error_curve():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "Współczynnik błędu klasyfikacji" in code, path.name
             assert "error_rate_learning_curves.png" in code, path.name
@@ -538,7 +562,7 @@ def test_every_model_has_comparable_classification_error_curve():
 
 def test_every_model_reports_final_train_and_held_out_test_error():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "train_error_rate = 1.0 - accuracy_score" in code, path.name
             assert "test_error_rate = 1.0 - accuracy" in code, path.name
@@ -551,7 +575,7 @@ def test_every_model_reports_final_train_and_held_out_test_error():
 
 def test_every_model_compares_final_train_and_held_out_test_metrics():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "train_auc_roc = roc_auc_score" in code, path.name
             assert "train_bce = log_loss" in code, path.name
@@ -568,18 +592,58 @@ def test_every_model_compares_final_train_and_held_out_test_metrics():
             assert "final_train_test_comparison.png" not in code, path.name
 
 
-def test_every_model_has_train_validation_error_by_parameter_or_epoch():
-    for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
-            _, code = notebook_source(path)
+def test_original_parameter_error_curves_name_test_split():
+    for path in training_notebooks("original"):
+        _, code = notebook_source(path)
+        if path.name.startswith("5_"):
             assert "plot_parameter_train_validation_error(" in code, path.name
-            if path.name.startswith("5_"):
-                assert "epoch_end_validation_accuracy" in code, path.name
-                assert "epoch_train_validation_error.png" in code, path.name
-            else:
-                assert "parameter_train_validation_error.png" in code, path.name
-                assert "parameter_model.predict(X_val_curve)" in code, path.name
-                assert "validation_errors" in code, path.name
+            assert "epoch_end_validation_accuracy" in code, path.name
+            assert "epoch_train_validation_error.png" in code, path.name
+            continue
+        assert "plot_parameter_train_test_error(" in code, path.name
+        assert "parameter_model.predict(X_test_curve)" in code, path.name
+        assert "parameter_train_test_error.png" in code, path.name
+        assert "test_errors" in code, path.name
+
+
+def test_label_normalizer_does_not_rename_test_data_as_validation():
+    source = (
+        "figure = plot_parameter_train_test_error(values, train, test, "
+        "x_label='Parametr')\n"
+    )
+
+    assert "plot_parameter_train_test_error" in normalize_source(source)
+
+
+def test_url_parameter_error_curves_use_validation_split():
+    expected_inputs = {
+        "1_": "train_test_data[dataset_name]['X_val_scaled']",
+        "2_": "train_test_data[dataset_name]['X_val']",
+        "3_": "data_splits[dataset_name]['X_val']",
+        "4_": "data_splits[dataset_name]['X_val_scaled']",
+    }
+    for path in training_notebooks("url_corpus"):
+        _, code = notebook_source(path)
+        assert "plot_parameter_train_validation_error(" in code, path.name
+        if path.name.startswith("5_"):
+            assert "epoch_end_validation_accuracy" in code, path.name
+            assert "epoch_train_validation_error.png" in code, path.name
+            continue
+        prefix = path.name[:2]
+        assert "parameter_model.predict(X_val_curve)" in code, path.name
+        assert "parameter_train_validation_error.png" in code, path.name
+        assert f"X_val_curve = {expected_inputs[prefix]}" in code, path.name
+        assert "y_val_curve =" in code and "['y_val']" in code, path.name
+
+
+def test_original_statistical_analysis_names_validation_data_correctly():
+    path = NOTEBOOK_ROOT / "original" / "0_comprehensive_statistical_analysis.ipynb"
+    _, code = notebook_source(path)
+    assert "Walidacja: {len(analysis_validation_df):,} próbek" in code
+    assert "Zbiór walidacyjny: {len(X_validation):,} próbek" in code
+    assert "Dokładność walidacyjna:" in code
+    assert "Zbiór testowy: {len(X_validation):,} próbek" not in code
+    assert "Dokładność testowa: {rf_model.score(X_validation" not in code
 
 
 def test_every_model_separates_metrics_time_and_feature_count_figures():
@@ -591,7 +655,7 @@ def test_every_model_separates_metrics_time_and_feature_count_figures():
         "5": "mlp",
     }
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             algorithm = algorithm_names[path.name[0]]
             assert "plot_classification_metrics(" not in code, path.name
@@ -613,7 +677,7 @@ def test_every_model_separates_metrics_time_and_feature_count_figures():
 
 def test_model_summaries_do_not_print_verbose_methodology():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "feature_count_comparison_rows," in code, path.name
             assert "training_time_measurement_summary," not in code, path.name
@@ -635,7 +699,7 @@ def test_xgboost_saves_checkpoint_before_evaluation():
 
 def test_confusion_matrix_and_roc_are_separate_figures():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "plot_confusion_and_roc" not in code, path.name
             assert "plot_confusion_matrix(" in code, path.name
@@ -859,7 +923,7 @@ def test_feature_value_axis_titles_quote_the_complete_feature_name():
 
 def test_model_notebook_data_axes_use_shared_scientific_scaling():
     schematic_cells = {"d7c4f34d", "c3255e1c", "782e4322"}
-    for path in sorted((NOTEBOOK_ROOT / "original").glob("[1-7]*.ipynb")):
+    for path in numbered_notebooks("original", 1, 7):
         notebook, _ = notebook_source(path)
         for cell in notebook["cells"]:
             source = "".join(cell.get("source", []))
@@ -883,7 +947,7 @@ def test_phase_figures_are_saved_as_independent_scientific_charts():
         assert "Macierze pomyłek" not in code
         assert "validation_curve" not in code
         assert "plot_metric_heatmap" in code
-    assert 'xticklabels=["Brak phishingu", "Phishing"]' in plot_code
+    assert "xticklabels=CLASS_LABELS" in plot_code
     assert "configure_count_colorbar(axis)" in plot_code
 
 
@@ -900,7 +964,7 @@ def test_phase_notebooks_skip_only_optional_incomplete_final_comparison():
 def test_curve_limits_are_scientifically_bounded():
     plot_code = PHASE_PLOT_PATH.read_text(encoding="utf-8")
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-4]*.ipynb")):
+        for path in numbered_notebooks(directory, 1, 4):
             _, code = notebook_source(path)
             assert "y_limits = shared_limits" not in code, path.name
             assert "y_limits=y_limits" not in code, path.name
@@ -941,7 +1005,7 @@ def test_notebooks_write_experiment_outputs_outside_data_directory():
         )
 
     for directory, corpus in (("original", "original"), ("url_corpus", "url_corpus")):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert f"'results' / '{corpus}' / 'model_comparisons'" in code
 
@@ -951,7 +1015,7 @@ def test_notebooks_write_experiment_outputs_outside_data_directory():
 
 
 def test_url_notebook_generator_is_deterministic():
-    script = BACKEND_ROOT / "scripts" / "prepare_url_corpus_notebooks.py"
+    script = BACKEND_ROOT / "scripts" / "reporting" / "prepare_url_corpus_notebooks.py"
     subprocess.run(
         [sys.executable, str(script), "--check"],
         cwd=BACKEND_ROOT,
@@ -993,7 +1057,7 @@ def test_url_notebook_generator_preserves_cell_cache_by_stable_id():
 
 def test_url_model_notebooks_report_threshold_calibration():
     """Every URL-corpus model must preserve validation calibration evidence."""
-    for path in sorted((NOTEBOOK_ROOT / "url_corpus").glob("[1-5]*.ipynb")):
+    for path in training_notebooks("url_corpus"):
         _, code = notebook_source(path)
         assert "'threshold_calibration': threshold_info" in code, path.name
         assert "Walidacyjny FPR przy wybranym progu" in code, path.name
@@ -1024,14 +1088,14 @@ def test_notebooks_write_experiment_outputs_only_under_results():
         assert "../static/" not in code, path.name
 
     for directory, corpus in (("original", "original"), ("url_corpus", "url_corpus")):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert f"backend_root.parent / 'results' / '{corpus}' / 'plots'" in code
 
 
 def test_model_resource_monitoring_uses_disposable_training_processes():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert code.count("fit_model_isolated(") == 1, path.name
             assert "isolated_result.model" in code, path.name
@@ -1047,7 +1111,7 @@ def test_model_resource_monitoring_uses_disposable_training_processes():
 
 def test_model_resource_plots_explain_the_measured_baseline():
     for directory in ("original", "url_corpus"):
-        for path in sorted((NOTEBOOK_ROOT / directory).glob("[1-5]*.ipynb")):
+        for path in training_notebooks(directory):
             _, code = notebook_source(path)
             assert "resource_baseline_summary," in code, path.name
             assert "print(resource_baseline_summary(monitor))" in code, path.name
@@ -1073,7 +1137,7 @@ def test_logistic_architecture_uses_class_semantic_colors():
             "else CLASS_COLORS['safe']"
         ) in code
         assert "Waga dodatnia → phishing" in code
-        assert "Waga ujemna → brak phishingu" in code
+        assert "Waga ujemna → legalny URL" in code
 
 
 def test_binary_notebook_visuals_use_one_blue_orange_palette():
@@ -1091,7 +1155,7 @@ def test_binary_notebook_visuals_use_one_blue_orange_palette():
 
 
 def test_url_model_notebooks_load_predefined_split_mappings():
-    for path in sorted((NOTEBOOK_ROOT / "url_corpus").glob("[1-5]*.ipynb")):
+    for path in training_notebooks("url_corpus"):
         _, code = notebook_source(path)
         assert "load_split_frames" in code, path.name
         assert "datasets = split_frames" in code, path.name

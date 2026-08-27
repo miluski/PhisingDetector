@@ -1,4 +1,4 @@
-from scripts.build_quality_url_corpus import (
+from backend.scripts.data_pipeline.build_quality_url_corpus import (
     build_hard_negative_rows,
     exclude_benign_roots_on_phishing_domains,
     is_benign_root,

@@ -1,6 +1,6 @@
 import csv
 
-from scripts.build_benign_root_hard_negatives import build
+from backend.scripts.data_pipeline.build_benign_root_hard_negatives import build
 
 
 def write_rows(path, rows):
